@@ -1,36 +1,25 @@
-```
-### STEP 01- Create a conda environment after opening the repository
+# Movie Recommender System
 
+A simple Content-based Movie Recommender System built with Streamlit.
+
+---
+
+## Run Locally
+
+1. Clone the repository
 ```bash
-conda create -n movie python=3.7.10 -y
+    git clone https://github.com/<your-username>/<your-repo>.git
+    cd <your-repo>
 ```
 
-```bash
-conda activate movie
+2. Create virtual environment & install dependencies
+```bash 
+    python -m venv venv
+    source venv/bin/activate   # On Windows: venv\Scripts\activate
+    pip install -r requirements.txt
 ```
 
-
-### STEP 02- install the requirements
-```bash
-pip install -r requirements.txt
-```
-
-
-```bash
-#run this file to generate the models
-
-Movie Recommender System Data Analysis.ipynb
-```
-
-Now run,
+3. Run the app
 ```bash
 streamlit run app.py
-```
-
-
-```bash
-Author: viettran0110
-Data Scientist
-Email: viettran1232004@gmail.com
-
 ```

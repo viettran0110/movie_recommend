@@ -1,26 +1,17 @@
-from setuptools import setup
-
-with open("README.md", "r", encoding="utf-8") as f:
-    long_description = f.read()
-
-## edit below variables as per your requirements -
-REPO_NAME = "Movie-Recommender-System-Using-Machine-Learning"
-AUTHOR_USER_NAME = "viet"
-SRC_REPO = "src"
-LIST_OF_REQUIREMENTS = ['streamlit', 'pandas', 'numpy', 'scikit-learn', 'requests']
-
+from setuptools import setup, find_packages
 
 setup(
-    name=SRC_REPO,
+    name="movie_recommender",   # tên package, có thể tuỳ chỉnh
     version="0.0.1",
-    author=AUTHOR_USER_NAME,
-    description="A small package for Movie Recommender System",
-    long_description=long_description,
-    long_description_content_type="text/markdown",
-    url=f"https://github.com/{AUTHOR_USER_NAME}/{REPO_NAME}",
-    author_email="viettran1232004@gmail.com",
-    packages=[SRC_REPO],
-    license="MIT",
+    description="Movie Recommender System with Streamlit",
+    packages=find_packages(where="src"),
+    package_dir={"": "src"},
     python_requires=">=3.7",
-    install_requires=LIST_OF_REQUIREMENTS
+    install_requires=[
+        "streamlit",
+        "pandas",
+        "numpy",
+        "scikit-learn",
+        "requests"
+    ],
 )
