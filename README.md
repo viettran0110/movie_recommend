@@ -8,8 +8,8 @@ A simple Content-based Movie Recommender System built with Streamlit.
 
 1. Clone the repository
 ```bash
-    git clone https://github.com/<your-username>/<your-repo>.git
-    cd <your-repo>
+    git clone https://github.com/viettran0110/movie_recommend.git
+    cd movie_recommend
 ```
 
 2. Create virtual environment & install dependencies
