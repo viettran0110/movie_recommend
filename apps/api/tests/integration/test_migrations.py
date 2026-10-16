@@ -15,7 +15,7 @@ from app.core.db import create_engine
 pytestmark = pytest.mark.integration
 
 API_ROOT = Path(__file__).resolve().parents[2]
-PG_IMAGE = "pgvector/pgvector:pg17"
+PG_IMAGE = "pgvector/pgvector:0.8.7-pg17"  # keep in sync with infra/docker-compose.yml
 
 
 @pytest.fixture(scope="module")

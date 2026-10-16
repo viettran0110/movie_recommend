@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Node 24 LTS (ADR-022). Standalone output keeps the runtime image small.
-FROM node:24.16.0-bookworm-slim AS base
+FROM node:24.16.0-trixie-slim AS base
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH NEXT_TELEMETRY_DISABLED=1
 RUN npm install -g pnpm@12.8.2
 
@@ -22,7 +22,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN pnpm build
 
-FROM node:24.16.0-bookworm-slim AS runtime
+FROM node:24.16.0-trixie-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
 RUN useradd --create-home --uid 10001 app
