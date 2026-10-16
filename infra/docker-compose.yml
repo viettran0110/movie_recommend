@@ -1,0 +1,97 @@
+# Local development stack. Usage (from repo root):
+#   cp infra/.env.example infra/.env   # fill in the placeholders
+#   docker compose -f infra/docker-compose.yml up --build
+name: movie-dev
+
+x-api-env: &api-env
+  APP_ENV: development
+  DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+  REDIS_URL: redis://redis:6379/0
+  MEILI_URL: http://meili:7700
+  MEILI_MASTER_KEY: ${MEILI_MASTER_KEY}
+  CORS_ORIGINS: http://localhost:3000
+
+services:
+  db:
+    image: pgvector/pgvector:0.8.7-pg17
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set in infra/.env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in infra/.env}
+      POSTGRES_DB: ${POSTGRES_DB:?set in infra/.env}
+    ports: ["127.0.0.1:5432:5432"]
+    volumes: [db-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: valkey/valkey:8.1.10-alpine
+    ports: ["127.0.0.1:6379:6379"]
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  meili:
+    image: getmeili/meilisearch:v1.54.3
+    environment:
+      MEILI_ENV: development
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?set in infra/.env}
+      MEILI_NO_ANALYTICS: "true"
+    ports: ["127.0.0.1:7700:7700"]
+    volumes: [meili-data:/meili_data]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:7700/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    build: ../apps/api
+    command: ["alembic", "upgrade", "head"]
+    environment: *api-env
+    depends_on:
+      db: { condition: service_healthy }
+
+  api:
+    build: ../apps/api
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    environment: *api-env
+    ports: ["127.0.0.1:8000:8000"]
+    volumes: ["../apps/api/app:/app/app"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+      meili: { condition: service_healthy }
+
+  worker:
+    build: ../apps/api
+    command: ["taskiq", "worker", "app.workers.broker:broker", "app.workers.tasks"]
+    environment: *api-env
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+
+  scheduler:
+    build: ../apps/api
+    command: ["taskiq", "scheduler", "app.workers.scheduler:scheduler", "app.workers.tasks"]
+    environment: *api-env
+    depends_on:
+      redis: { condition: service_healthy }
+
+  web:
+    build:
+      context: ../apps/web
+      target: dev
+    environment:
+      API_INTERNAL_URL: http://api:8000
+    ports: ["127.0.0.1:3000:3000"]
+    volumes: ["../apps/web/src:/app/src"]
+    depends_on: [api]
+
+volumes:
+  db-data:
+  meili-data:
