@@ -1,0 +1,85 @@
+# Current State and Gap Analysis
+
+Status: **Current** — describes what exists in the repository as of 2026-10-16. Update this file whenever a gap is closed.
+
+## Inventory
+
+| Path | Role | Notes |
+|---|---|---|
+| [app.py](../../app.py) | Streamlit UI | Select a title → show 5 similar movies with posters |
+| `Movie Recommender System Data Analysis.ipynb` | Offline pipeline | Builds `artifacts/*.pkl` from TMDB 5000 CSVs |
+| [requirements.txt](../../requirements.txt) | Deps | `streamlit` + `-e .` (installs `setup.py`) |
+| [setup.py](../../setup.py) | Packaging | Package `src/`; deps: streamlit, pandas, numpy, scikit-learn, requests; `python_requires>=3.7` |
+| [pyproject.toml](../../pyproject.toml) | Build system only | setuptools backend, no project metadata |
+| `src/__init__.py`, `src/utils/__init__.py` | Empty package | No code |
+| [start.sh](../../start.sh) | PaaS launch | Writes `~/.streamlit/config.toml`, runs on `$PORT` |
+| `data/` | Input CSVs (gitignored) | Expects `tmdb_5000_movies.csv`, `tmdb_5000_credits.csv` — **not present locally** |
+| `artifacts/` | Model output (gitignored) | Expects `movie_list.pkl`, `similarity.pkl` — **not present locally** |
+| [README.md](../../README.md) | Run instructions | venv + `streamlit run app.py` |
+
+Not present: tests, CI, Docker, database, auth, search engine, frontend framework, linters, lockfiles.
+
+## How the prototype works
+
+1. Notebook loads the TMDB 5000 Kaggle CSVs and merges movies with credits.
+2. `ast.literal_eval` parses JSON-like columns. It extracts genres, keywords, top-3 cast, and director, and strips the spaces inside names.
+3. Builds a `tags` string (overview + genres + keywords + cast + crew) and lowercases it.
+4. Vectorizes the tags with `CountVectorizer(max_features=5000, stop_words='english')`, then computes `cosine_similarity` as a dense matrix (~4800 × 4800).
+5. Pickles `new_df` (movie_id, title, tags) and the similarity matrix into `artifacts/`.
+6. `app.py` loads both pickles and sorts the selected row for the top 5. For each result it calls the TMDB API to fetch the poster, using `st.secrets["tmbd"]["api_key"]` from `.streamlit/secrets.toml`.
+
+## Running it (legacy)
+
+```bash
+pip install -r requirements.txt
+# Place the Kaggle CSVs in data/, run the notebook to produce artifacts/*.pkl
+# Create .streamlit/secrets.toml with:  [tmbd]\napi_key = "<TMDB_API_KEY>"
+streamlit run app.py
+```
+
+The app fails at startup if `artifacts/*.pkl` is missing.
+
+## Known issues
+
+- The dense N×N similarity matrix grows O(N²) in memory and disk, so it does not scale beyond a few thousand titles.
+- Pickle loading is unsafe for untrusted files, and the pickle is coupled to the pandas version.
+- Every recommendation makes 5 TMDB HTTP calls, with no timeout and no error handling. `@st.cache_data` mitigates repeat calls only.
+- `movies[movies['title'] == movie].index[0]` breaks on duplicate titles.
+- The secret section is misspelled `tmbd` (it should be `tmdb`). Keep this in mind if the legacy app is reused.
+- Dependencies are split between `requirements.txt` and `setup.py`, with no pinning and `python>=3.7`.
+- `start.sh` disables XSRF protection.
+
+## Gap vs target
+
+| Capability | Current | Target (see [architecture.md](architecture.md)) |
+|---|---|---|
+| UI | Streamlit single page | Next.js SSR site |
+| API | none | FastAPI `/api/v1` ([api-contracts.md](api-contracts.md)) |
+| Storage | pickle files | PostgreSQL + pgvector ([data-model.md](data-model.md)) |
+| Search | selectbox over titles | Meilisearch |
+| Users / lists / ratings | none | auth + `user_movie_entries` ([security.md](security.md)) |
+| Recommendation | content-based CountVectorizer | tiered hybrid ([recommendation.md](recommendation.md)) |
+| Tests / CI / deploy | none | [testing.md](testing.md), [deployment.md](deployment.md) |
+
+## Proposed legacy migration (not executed)
+
+Legacy files may be modified or deleted (see [decisions.md](decisions.md) ADR-012). Each step happens in its own branch and commit per [git-workflow.md](git-workflow.md).
+
+| Legacy | Proposed destination |
+|---|---|
+| Notebook | `git mv` → `ml/notebooks/` |
+| Notebook pipeline logic | Re-implement in `ml/recsys/content.py` (TF-IDF/embeddings) |
+| `app.py`, `start.sh` | Delete once the Next.js movie detail + similar movies feature replaces them |
+| `setup.py`, `requirements.txt`, `src/` | Delete; replaced by `apps/api/pyproject.toml` (uv) |
+| `data/`, `artifacts/` dirs | Keep as gitignored local dirs for ML inputs/outputs, or move under `ml/` |
+
+## Roadmap (planned)
+
+| Phase | Scope |
+|---|---|
+| 0 | Monorepo skeleton, docker-compose (Postgres+pgvector, Redis, Meilisearch), Alembic, lint, CI |
+| 1 | Catalog import, search, explore, detail page, content-based "similar" |
+| 2 | Auth, personal list (status/score), public profile list, reviews, favorites |
+| 3 | Events, trending, Bayesian top, item-CF + ALS, `/me/recommendations`, user-submitted recs |
+| 4 | Production deploy, monitoring, backups, rate limiting, admin |
+| 5 | Hybrid ranker, MMR, A/B testing, TV/anime scope |
