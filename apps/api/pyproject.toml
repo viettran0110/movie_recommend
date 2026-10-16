@@ -48,7 +48,7 @@ known-third-party = ["alembic"]  # local alembic/ dir shadows the package for is
 python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
-files = ["app"]
+files = ["app", "scripts"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
