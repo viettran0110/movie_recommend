@@ -1,11 +1,12 @@
 # API Contracts
 
-Status: **Planned draft.** No API exists yet. FastAPI's generated OpenAPI schema becomes the source of truth once implemented. Keep this file as the human summary and update it in the same change.
+Status: **Planned draft**, except `GET /api/v1/health`, which is **current**. FastAPI's generated OpenAPI schema becomes the source of truth once implemented. Keep this file as the human summary and update it in the same change.
 
 ## Conventions
 
 - Base path `/api/v1`, JSON only, `snake_case` fields.
-- Health check: `GET /api/v1/health` returns `{"status":"ok"}`. It checks DB, Redis, and Meilisearch connectivity.
+- Health check (current): `GET /api/v1/health` returns `{"status":"ok","checks":{"database":true,"redis":true,"meilisearch":true}}`. If any check fails or exceeds 2 s, it returns 503 with `"status":"degraded"` and the same `checks` shape. Error details are never returned.
+- Docs: Swagger UI at `/api/v1/docs`, schema at `/api/v1/openapi.json`. The committed copy is `apps/api/openapi.json`.
 - **Media types**: catalog resources are `titles`. Each title response includes `media_type` (`movie` at launch). List endpoints accept `?media_type=`, which defaults to all enabled types. Type-specific fields sit in a nested object (`movie: {runtime, ...}`). See [data-model.md](data-model.md) (ADR-019).
 - Pagination: `?page=1&page_size=20` (max 100) returns `{"items": [...], "page", "page_size", "total"}`. Use cursor pagination (`?cursor=`) for event-style feeds.
 - Errors: `{"error": {"code": "string_slug", "message": "human readable", "details": {...}}}` with the matching HTTP status. Validation errors return 422, with `details` listing field errors.

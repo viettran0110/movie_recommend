@@ -79,7 +79,7 @@ Exceeding a limit returns 429 with `Retry-After`.
 
 ## Environment variables (example, placeholders only)
 
-A future `.env.example` should look like this. Never commit a real `.env`.
+Current templates: [apps/api/.env.example](../../apps/api/.env.example), [apps/web/.env.example](../../apps/web/.env.example), and [infra/.env.example](../../infra/.env.example) for compose credentials. The full planned set is below. Add each variable to the relevant template, and to `app/core/config.py`, in the change that starts using it. Never commit a real `.env`.
 
 ```dotenv
 APP_ENV=development

@@ -1,6 +1,9 @@
 # Architecture
 
-Status: **Planned** — none of the components below exist yet. Current code is the Streamlit prototype ([current-state.md](current-state.md)). Rationale for each choice: [decisions.md](decisions.md).
+Status:
+- **Phase 0 skeleton is current**: `apps/api` (core, health module, Alembic, Taskiq worker), `apps/web` (Next.js, typed API client), `infra/docker-compose.yml`, CI.
+- **Planned**: every domain module, `ml/`, production infrastructure.
+- Markers in the layout below show which is which. What exists today is listed in [current-state.md](current-state.md). Rationale for each choice: [decisions.md](decisions.md).
 
 ## Style
 
@@ -26,7 +29,7 @@ SSR/ISR, UI         modules: auth, users, titles, search,
                   +pgvector    cache, rate    title index
                   +pg_trgm     limit, broker
                        ▲          │
-                       └── job worker (Q4) + APScheduler
+                       └── Taskiq worker + Taskiq scheduler
                            (TMDB sync, reindex, train recs,
                             trending/top, email)
 ```
@@ -55,28 +58,29 @@ SSR/ISR, UI         modules: auth, users, titles, search,
      - Respect TMDB rate limits and show the TMDB attribution.
      - Only `movie` is ingested at launch; ingestion is keyed by `media_type` so other types can be added (ADR-019).
 
-## Target repository layout (planned)
+## Repository layout (target; `[current]` marks what exists)
 
 ```
 apps/
-  web/                    Next.js (App Router, TypeScript, Tailwind, shadcn/ui)
+  web/                    [current] Next.js 16 (App Router, TypeScript, Tailwind 4); shadcn/ui planned
     src/app/              routes: /, /movie/[id]-[slug] (one prefix per media_type), /search, /explore, /top,
                           /genre/[slug], /u/[username]/list, /login
     src/components/       shared UI (ui/ = shadcn primitives)
-    src/features/<domain>/ domain components + hooks (titles, search, lists, auth, recs)
-    src/lib/api/          generated OpenAPI client — do not hand-edit
-  api/                    FastAPI
-    app/main.py
-    app/core/             config (pydantic-settings), db, security, logging, cache
-    app/modules/<domain>/ router.py, schemas.py, service.py, repository.py, models.py
+    src/features/<domain>/ domain components + hooks (titles, search, lists, auth, recs); [current] system/
+    src/lib/api/          [current] openapi-fetch client + schema.d.ts generated from ../api/openapi.json — do not hand-edit
+  api/                    [current] FastAPI
+    app/main.py           [current] app factory + lifespan
+    app/core/             [current] config, db, logging; [planned] security, cache
+    app/modules/<domain>/ router.py, schemas.py, service.py, repository.py, models.py; [current] health/
     app/integrations/     tmdb_client.py, meili_client.py
-    app/workers/          job definitions (library per Q4), scheduler.py
-    alembic/
-    tests/
+    app/workers/          [current] Taskiq broker.py, scheduler.py, tasks.py
+    alembic/              [current] async env, revisions in versions/
+    scripts/              [current] export_openapi.py → openapi.json (committed API contract)
+    tests/                [current] unit; integration/ (testcontainers)
 ml/                       offline training/evaluation, imported by workers
   notebooks/  recsys/  evaluation/  pipelines/
-infra/                    docker-compose*.yml, Caddyfile, monitoring config
-.github/workflows/
+infra/                    [current] docker-compose.yml (dev); [planned] prod compose, Caddyfile, monitoring
+.github/workflows/        [current] ci.yml; [planned] deploy.yml
 ```
 
 ## Backend layering rules
