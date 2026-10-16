@@ -60,8 +60,8 @@ Summary: Delete the Streamlit UI now that the Next.js detail page serves
 similar-movie recommendations.
 
 Removed/moved files:
-- app.py (replaced by apps/web/src/app/movies/[id]/page.tsx and
-  GET /api/v1/movies/{id}/similar)
+- app.py (replaced by apps/web/src/app/movie/[id]/page.tsx and
+  GET /api/v1/titles/{id}/similar)
 - start.sh (replaced by infra/docker-compose.prod.yml)
 ```
 

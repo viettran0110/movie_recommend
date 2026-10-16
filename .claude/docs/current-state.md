@@ -57,7 +57,7 @@ The app fails at startup if `artifacts/*.pkl` is missing.
 | API | none | FastAPI `/api/v1` ([api-contracts.md](api-contracts.md)) |
 | Storage | pickle files | PostgreSQL + pgvector ([data-model.md](data-model.md)) |
 | Search | selectbox over titles | Meilisearch |
-| Users / lists / ratings | none | auth + `user_movie_entries` ([security.md](security.md)) |
+| Users / lists / ratings | none | auth + `user_title_entries` ([security.md](security.md)) |
 | Recommendation | content-based CountVectorizer | tiered hybrid ([recommendation.md](recommendation.md)) |
 | Tests / CI / deploy | none | [testing.md](testing.md), [deployment.md](deployment.md) |
 
@@ -78,8 +78,8 @@ Legacy files may be modified or deleted (see [decisions.md](decisions.md) ADR-01
 | Phase | Scope |
 |---|---|
 | 0 | Monorepo skeleton, docker-compose (Postgres+pgvector, Redis, Meilisearch), Alembic, lint, CI |
-| 1 | Catalog import, search, explore, detail page, content-based "similar" |
+| 1 | Full TMDB import + daily sync, Meilisearch search (autocomplete, typo tolerance, facets), explore, detail page, Bayesian top, content-based "similar" |
 | 2 | Auth, personal list (status/score), public profile list, reviews, favorites |
-| 3 | Events, trending, Bayesian top, item-CF + ALS, `/me/recommendations`, user-submitted recs |
+| 3 | Events, time-decayed trending, `/me/recommendations` (content-based on the user's list), user-submitted recs; item-CF / ALS only after the own-data threshold ([recommendation.md](recommendation.md)) |
 | 4 | Production deploy, monitoring, backups, rate limiting, admin |
 | 5 | Hybrid ranker, MMR, A/B testing, TV/anime scope |

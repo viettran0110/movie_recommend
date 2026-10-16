@@ -7,7 +7,7 @@ Instructions for AI agents and developers working in this repository. Read this 
 This is a movie discovery, tracking, and recommendation website: search, explore, a personal watch list with status and score, reviews, personalized and community recommendations, and SEO-friendly public pages.
 
 - **Today**: the repository contains only a legacy Streamlit prototype (a content-based recommender over TMDB 5000).
-- **Target**: a modular monolith with a Next.js frontend, a FastAPI backend, PostgreSQL + pgvector, Redis, Meilisearch, and a Dramatiq worker. **This is planned; none of it exists yet.**
+- **Target**: a modular monolith with a Next.js frontend, a FastAPI backend, PostgreSQL + pgvector, Redis, Meilisearch, and a background job worker (library TBD: Dramatiq or Taskiq). **This is planned; none of it exists yet.**
 
 Never describe planned components as implemented. Check the filesystem first.
 
@@ -46,6 +46,8 @@ Read the listed doc before starting the task. Read several when a task spans are
 - **Modular monolith.** One FastAPI app with domain modules, one worker from the same codebase. Do not add services without a new ADR in `decisions.md`.
 - **Backend layering:** router → service → repository. No SQL in routers. Pydantic schemas at every boundary; never return ORM objects.
 - **Schema changes** go through an Alembic migration in the same commit.
+- **Media types:** the catalog is `titles` + `media_type` (movies first). Reference `title_id`; shared tables, API schemas, and components must not assume `movie` (per-type URL prefixes like `/movie/...` are fine) ([data-model.md](.claude/docs/data-model.md)).
+- **Search** is a core feature and runs on Meilisearch from Phase 1. Index settings live in code, not in manual config.
 - **API changes** update `api-contracts.md`, and the generated TypeScript client is regenerated and committed alongside.
 - **Recommendations** are computed offline by the worker and stored in Postgres. The API only reads, filters, and re-ranks. Do not extend the pickle approach.
 - **External calls** (TMDB) go only through an integration client, with timeouts and retries. Tests never hit TMDB.

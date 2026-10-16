@@ -1,6 +1,6 @@
 # Deployment and Operations
 
-Status: **Planned.** The repository has no Docker, CI, or infrastructure config today. The only existing deploy artifact is the legacy [start.sh](../../start.sh), a PaaS-style Streamlit launcher. Decisions: ADR-011 and Q3 in [decisions.md](decisions.md).
+Status: **Planned.** The repository has no Docker, CI, or infrastructure config today. The only existing deploy artifact is the legacy [start.sh](../../start.sh), a PaaS-style Streamlit launcher. Decisions: ADR-011 and ADR-016 in [decisions.md](decisions.md).
 
 ## Local development (planned `infra/docker-compose.yml`)
 
@@ -10,7 +10,7 @@ Status: **Planned.** The repository has no Docker, CI, or infrastructure config 
 | `redis` | `redis:7` or `valkey/valkey:8` | 6379 |
 | `meili` | `getmeili/meilisearch` (pinned version) | 7700 |
 | `api` | `apps/api` Dockerfile, uvicorn `--reload` | 8000 |
-| `worker` | same image as api, runs Dramatiq + scheduler | — |
+| `worker` | same image as api, runs the job worker (Q4) + scheduler | — |
 | `web` | `apps/web`, `pnpm dev` | 3000 |
 
 Pin image versions; never use `latest`. Secrets come from a local `.env` that is gitignored ([security.md](security.md) has the variable list).
@@ -18,6 +18,7 @@ Pin image versions; never use `latest`. Secrets come from a local `.env` that is
 ## Production (planned)
 
 - One VPS running Docker Compose (`infra/docker-compose.prod.yml`), with Caddy for TLS and reverse proxy, behind Cloudflare DNS/CDN.
+- The Next.js app (`next start`, standalone output) runs on the same VPS (ADR-016). Caddy routes `/api/*` to `api:8000` and everything else to `web:3000`. Meilisearch is not exposed publicly.
 - Images are built in GitHub Actions and pushed to GHCR, tagged with the git SHA.
 - Deploy: SSH to the VPS, `docker compose pull`, run migrations, `docker compose up -d`, then a health check on `GET /api/v1/health`. If the health check fails, roll back to the previous SHA tag.
 - Migrations: run `alembic upgrade head` as a one-off container **before** starting the new API. Destructive migrations need explicit approval and a fresh backup ([data-model.md](data-model.md)).

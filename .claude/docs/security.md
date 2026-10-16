@@ -65,6 +65,7 @@ Use an explicit allow-list of frontend origins with `allow_credentials=True`. Ne
 | `/auth/register`, `/auth/password/forgot` | 5/hour per IP |
 | `/auth/refresh` | 30/min per user |
 | `/search` | 60/min per IP |
+| `/search/suggest` (autocomplete, called per keystroke after debounce) | 300/min per IP |
 | Review, user-rec, and list writes | 30/min per user |
 | `/events` | 120/min per session |
 
