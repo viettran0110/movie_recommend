@@ -1,0 +1,6 @@
+# Normalize line endings in the repository; shell scripts and Dockerfiles must stay LF.
+* text=auto eol=lf
+*.ico binary
+*.png binary
+*.jpg binary
+*.pkl binary
