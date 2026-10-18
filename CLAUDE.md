@@ -23,10 +23,10 @@ Never describe planned components as implemented. Check the filesystem first.
 | `Movie Recommender System Data Analysis.ipynb` | Legacy pipeline: TMDB CSV → CountVectorizer → cosine matrix → pickle |
 | `requirements.txt`, `setup.py`, `pyproject.toml`, `src/` | Legacy packaging; `src/` holds only empty `__init__.py` files |
 | `start.sh` | Legacy PaaS launcher for Streamlit |
-| `data/`, `artifacts/` | Gitignored inputs/outputs. **Empty locally**: CSVs and pickles must be regenerated |
+| `data/`, `artifacts/` | Gitignored inputs/outputs. `data/` holds the TMDB 5000 CSVs (the catalog source, ADR-023); `artifacts/` is empty, pickles must be regenerated |
 | `.claude/docs/` | Design and process docs (routing below) |
 
-Not built yet: domain modules and tables, auth, search indexing, TMDB ingestion, `ml/`, production deploy. The target layout, with current/planned markers, is in [architecture.md](.claude/docs/architecture.md).
+Not built yet: domain modules and tables, auth, search indexing, CSV catalog import, `ml/`, production deploy. The target layout, with current/planned markers, is in [architecture.md](.claude/docs/architecture.md).
 
 ## Documentation routing
 
@@ -55,7 +55,8 @@ Read the listed doc before starting the task. Read several when a task spans are
 - **API changes** update `api-contracts.md`, re-export `apps/api/openapi.json`, and regenerate `apps/web/src/lib/api/schema.d.ts` in the same commit (CI checks both).
 - **Background work** runs as Taskiq tasks in `app/workers/`, with one scheduler per environment.
 - **Recommendations** are computed offline by the worker and stored in Postgres. The API only reads, filters, and re-ranks. Do not extend the pickle approach.
-- **External calls** (TMDB) go only through an integration client, with timeouts and retries. Tests never hit TMDB.
+- **Catalog data** comes from the CSVs in `data/` through the `CatalogSource` importer (ADR-023). No TMDB API calls and no posters in v1 (ADR-024). Never commit the CSVs.
+- **External calls** go only through an integration client, with timeouts and retries. Tests never hit third-party APIs.
 - **Config** comes from typed settings (pydantic-settings), never from scattered `os.environ` reads.
 - **Open questions** in `decisions.md`: do not silently pick an answer; ask. **New dependencies and images**: pin versions at least two weeks old (pnpm enforces this via `minimumReleaseAge`).
 - **Docs stay true.** When you build something, move it from "planned" to "current" in the relevant doc in the same change.

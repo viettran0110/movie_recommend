@@ -18,8 +18,8 @@ To change a decision, add a new entry that supersedes the old one. Do not silent
 | ADR-010 | Recommender stack: pandas/polars, scikit-learn, sentence-transformers; later `implicit` and LightGBM ([recommendation.md](recommendation.md)) | Accepted | LightFM, Surprise: poorly maintained |
 | ADR-011 | Deploy: Docker Compose on one VPS, Caddy, GHCR, GitHub Actions; Sentry + Prometheus/Grafana ([deployment.md](deployment.md)) | Accepted | AWS ECS/RDS: cost and complexity |
 | ADR-012 | Legacy prototype files may be modified or deleted; every change is traced through typed branches and descriptive commits ([git-workflow.md](git-workflow.md)) | Accepted | Freezing legacy code in `legacy/`: not required by the owner |
-| ADR-013 | Posters and images are served from the TMDB CDN, not stored | Accepted | — |
-| ADR-014 | Catalog source: the **full TMDB API**, with an initial bulk import and a daily sync job | Accepted (Q1) | TMDB 5000 CSV: static and too small |
+| ADR-013 | Posters and images are served from the TMDB CDN, not stored | Superseded by ADR-024 | — |
+| ADR-014 | Catalog source: the **full TMDB API**, with an initial bulk import and a daily sync job | Accepted (Q1); superseded by ADR-023 | TMDB 5000 CSV: static and too small |
 | ADR-015 | Recommendation is **independent of MovieLens**. It uses Bayesian rating for rankings, time-decayed trending, and content-based filtering on TMDB metadata; personal signals come only from this site's users (ratings, list status). Collaborative filtering waits until the site's own interaction data is sufficient | Accepted (Q2) | MovieLens bootstrap: non-commercial license, and the data is not ours |
 | ADR-016 | Frontend runs on the **same VPS** as the API, behind Caddy | Accepted (Q3) | Vercel: a second platform and split deployment |
 | ADR-017 | Versions: Python 3.12, Node 22 LTS, pnpm | Accepted (Q7); Node part superseded by ADR-022 | — |
@@ -28,6 +28,8 @@ To change a decision, add a new entry that supersedes the old one. Do not silent
 | ADR-020 | **English only in v1.** Vietnamese comes later; keep UI strings centralized so next-intl can be added without rewrites | Accepted (Q8) | Building i18n in the MVP: scope |
 | ADR-021 | **Taskiq** for background jobs: `RedisStreamBroker` (acknowledged, re-delivered on worker death) and `TaskiqScheduler` with cron labels; no APScheduler. Tasks are async and share the app's async SQLAlchemy/httpx code | Accepted (Q4) | Dramatiq: sync actors would need a second, sync DB access path |
 | ADR-022 | **Node 24 LTS** (24.16.0 in Docker and CI) replaces Node 22. Reasons: Node 22 leaves LTS maintenance in April 2027, and Node 24 is the local runtime. Compatibility verified on 2026-10-16: Next.js 16.3.8 requires Node >= 20.9; lint, typecheck, unit tests, and production build pass on 24.16.0; the standalone runtime image serves pages | Accepted | Staying on Node 22: an upgrade would be needed within six months |
+| ADR-023 | **Catalog source: local CSV files in `data/`** (the TMDB 5000 Kaggle export: `tmdb_5000_movies.csv`, `tmdb_5000_credits.csv`; 4,803 movies released 1916–2017). A worker task imports them on demand (no schedule, no daily sync). The importer reads through a `CatalogSource` interface, so a TMDB API source can be added later without changing the tables or the upsert code. No TMDB API key is needed. Supersedes ADR-014. Decided 2026-10-18 | Accepted | Full TMDB API: needs an API key, rate-limit handling and attribution, and a sync job, which the project does not want now |
+| ADR-024 | **No posters or images in v1.** The CSVs carry no image paths, so the UI renders a generated placeholder (title and year on a colour derived from the title id). `poster_path`/`backdrop_path`/`profile_path` stay as nullable columns for a future source. Supersedes ADR-013. Decided 2026-10-18 | Accepted | TMDB API only for images: brings back the API key; hotlinking images from other sites: licensing and reliability |
 
 ## Open questions
 

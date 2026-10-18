@@ -47,7 +47,7 @@ Auth column: **—** public, **U** authenticated user, **A** admin. **RL** means
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | GET | `/search?q=&media_type=&genres=&year_from=&year_to=&min_score=&sort=&page=` | — RL | Full results with facet counts (`facets` object) |
-| GET | `/search/suggest?q=&limit=` | — RL | Autocomplete: max 10 lightweight hits (id, media_type, title, year, poster_path); target p95 < 100 ms |
+| GET | `/search/suggest?q=&limit=` | — RL | Autocomplete: max 10 lightweight hits (id, media_type, title, year, poster_path — null in v1, ADR-024); target p95 < 100 ms |
 
 - Typo tolerance, prefix search, and ranking rules are configured in the Meilisearch index settings and kept in code (`app/integrations/meili_client.py`, planned). They are applied by a settings-sync job, never configured by hand.
 - `sort` and filter fields are validated against an allow-list before they reach Meilisearch.
@@ -76,7 +76,7 @@ Auth column: **—** public, **U** authenticated user, **A** admin. **RL** means
 
 | Key pattern | TTL | Invalidated by |
 |---|---|---|
-| `title:{id}` | 1 h | Title update or TMDB sync |
+| `title:{id}` | 1 h | Title update or catalog import |
 | `explore:top:{media_type}:{sort}`, `explore:trending:{media_type}:{window}` | Until the next scheduled recompute | Recompute job |
 | `similar:{id}` | 24 h | Recommender training job |
 | `recs:user:{user_id}` | 24 h | Change to the user's list or score; training job |

@@ -15,7 +15,8 @@ Status:
   - Every endpoint: one success case and its main error cases (401, 403, 404, 422).
   - Authorization: user A cannot modify user B's data.
   - Auth: refresh rotation, reuse detection, logout revocation, CSRF rejection.
-- Mock external services (TMDB) at the `app/integrations/` boundary. Tests never call TMDB.
+- Mock external services at the `app/integrations/` boundary. Tests never call TMDB or any other third-party API.
+- Catalog import tests use small fixture CSVs under `tests/fixtures/` with the same columns as the TMDB 5000 files (including malformed rows). They never read the real `data/` files, which are not in the repository or in CI.
 
 ```bash
 cd apps/api

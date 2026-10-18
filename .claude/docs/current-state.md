@@ -24,11 +24,11 @@ Status: **Current** — describes what exists in the repository as of 2026-10-16
 | [pyproject.toml](../../pyproject.toml) | Build system only | setuptools backend, no project metadata |
 | `src/__init__.py`, `src/utils/__init__.py` | Empty package | No code |
 | [start.sh](../../start.sh) | PaaS launch | Writes `~/.streamlit/config.toml`, runs on `$PORT` |
-| `data/` | Input CSVs (gitignored) | Expects `tmdb_5000_movies.csv`, `tmdb_5000_credits.csv` — **not present locally** |
+| `data/` | Input CSVs (gitignored) | `tmdb_5000_movies.csv`, `tmdb_5000_credits.csv` — present locally (4,803 movies each, added 2026-10-18). Also the planned catalog source (ADR-023) |
 | `artifacts/` | Model output (gitignored) | Expects `movie_list.pkl`, `similarity.pkl` — **not present locally** |
 | [README.md](../../README.md) | Run instructions | venv + `streamlit run app.py` |
 
-Not present yet: domain tables, auth, search indexing, TMDB ingestion, recommender code (`ml/`), production deploy, monitoring, backups.
+Not present yet: domain tables, auth, search indexing, CSV catalog import, recommender code (`ml/`), production deploy, monitoring, backups.
 
 ## How the prototype works
 
@@ -89,7 +89,7 @@ Legacy files may be modified or deleted (see [decisions.md](decisions.md) ADR-01
 | Phase | Scope |
 |---|---|
 | 0 (done) | Monorepo skeleton, docker-compose (Postgres+pgvector, Valkey, Meilisearch), Alembic, Taskiq worker, lint, CI — done 2026-10-16 |
-| 1 | Full TMDB import + daily sync, Meilisearch search (autocomplete, typo tolerance, facets), explore, detail page, Bayesian top, content-based "similar" |
+| 1 | CSV catalog import from `data/` (ADR-023, no posters per ADR-024), Meilisearch search (autocomplete, typo tolerance, facets), explore, detail page, Bayesian top, content-based "similar" |
 | 2 | Auth, personal list (status/score), public profile list, reviews, favorites |
 | 3 | Events, time-decayed trending, `/me/recommendations` (content-based on the user's list), user-submitted recs; item-CF / ALS only after the own-data threshold ([recommendation.md](recommendation.md)) |
 | 4 | Production deploy, monitoring, backups, rate limiting, admin |

@@ -30,7 +30,7 @@ SSR/ISR, UI         modules: auth, users, titles, search,
                   +pg_trgm     limit, broker
                        ▲          │
                        └── Taskiq worker + Taskiq scheduler
-                           (TMDB sync, reindex, train recs,
+                           (CSV catalog import, reindex, train recs,
                             trending/top, email)
 ```
 
@@ -39,7 +39,7 @@ SSR/ISR, UI         modules: auth, users, titles, search,
 - **Read path (movie page)**:
   1. Next.js server component calls `GET /api/v1/titles/{id}`.
   2. The API checks the Redis cache, falls back to Postgres, then populates the cache.
-  3. Posters are served from the TMDB image CDN via `next/image`. They are never stored locally.
+  3. There are no posters in v1 (ADR-024). The page renders a generated placeholder; `poster_path` is null.
 - **Search**:
   1. Postgres is the source of truth.
   2. Writes to `titles` enqueue `reindex_title(id)`, and the worker upserts into Meilisearch.
@@ -50,13 +50,13 @@ SSR/ISR, UI         modules: auth, users, titles, search,
   2. Online: the API reads those tables, filters, re-ranks, and caches the result.
   3. The API never trains models or loads large artifacts into memory.
   4. Details: [recommendation.md](recommendation.md).
-- **Ingestion**:
-  1. A scheduled job pulls TMDB changes, then upserts titles (with `movie_details`), credits, and genres.
-  2. It then enqueues reindex jobs.
-  3. Source: the full TMDB API (ADR-014).
-     - Initial bulk import from TMDB daily ID exports, then a daily sync through the `/changes` endpoints.
-     - Respect TMDB rate limits and show the TMDB attribution.
-     - Only `movie` is ingested at launch; ingestion is keyed by `media_type` so other types can be added (ADR-019).
+- **Ingestion** (planned, ADR-023):
+  1. Source: the TMDB 5000 CSVs in the repository-root `data/` directory (gitignored, never committed). `tmdb_5000_movies.csv` and `tmdb_5000_credits.csv` are joined on `id` = `movie_id`. Nested columns (genres, keywords, cast, crew, companies, countries, languages) hold JSON arrays and are parsed with `json.loads`, not `ast.literal_eval`.
+  2. An on-demand Taskiq task `import_catalog` (also runnable as `python -m scripts.import_catalog`) reads rows through a `CatalogSource`, validates each one with a Pydantic schema, and upserts titles (with `movie_details`), genres, keywords, people, and credits keyed on (`media_type`, `tmdb_id`). It is idempotent: re-running it updates rows in place and never deletes. Invalid rows are counted and logged by id, not fatal.
+  3. It then enqueues reindex jobs for the titles it changed.
+  4. There is no scheduled sync. The catalog changes only when the CSVs change and the import is re-run.
+  5. `CatalogSource` is the extension point: `Tmdb5000CsvSource` is the only implementation. A TMDB API source, or a source for another `media_type` (ADR-019), plugs in behind the same interface.
+  6. The directory comes from the `CATALOG_DATA_DIR` setting. In compose, `data/` is mounted read-only into the worker.
 
 ## Repository layout (target; `[current]` marks what exists)
 
@@ -72,7 +72,8 @@ apps/
     app/main.py           [current] app factory + lifespan
     app/core/             [current] config, db, logging; [planned] security, cache
     app/modules/<domain>/ router.py, schemas.py, service.py, repository.py, models.py; [current] health/
-    app/integrations/     tmdb_client.py, meili_client.py
+    app/modules/catalog/  importer service; sources/ (CatalogSource protocol, tmdb5000_csv.py)
+    app/integrations/     meili_client.py
     app/workers/          [current] Taskiq broker.py, scheduler.py, tasks.py
     alembic/              [current] async env, revisions in versions/
     scripts/              [current] export_openapi.py → openapi.json (committed API contract)
@@ -91,7 +92,7 @@ infra/                    [current] docker-compose.yml (dev); [planned] prod com
 - `schemas.py`: request/response models. Never return ORM objects directly.
 - `models.py`: ORM tables. Every change requires an Alembic migration ([data-model.md](data-model.md)).
 - Config comes only from `app/core/config.py` (pydantic-settings). No `os.environ` lookups scattered through modules.
-- External HTTP calls (TMDB) go through `app/integrations/`, with timeouts, retries, and backoff.
+- External HTTP calls go through `app/integrations/`, with timeouts, retries, and backoff. Today that is only Meilisearch; the catalog is read from local files (ADR-023).
 
 ## Frontend rules
 
