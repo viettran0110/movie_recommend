@@ -34,7 +34,7 @@ Only movies are in scope at launch, but the schema must not be movies-only:
 - `score_avg`, `score_count` and `members_count` are denormalized from `user_title_entries`. A worker job recomputes them; never compute them per request.
 - `members_count` means the number of users with the title in their list, in any status.
 - The catalog comes from the TMDB 5000 CSVs in `data/`, through an on-demand import task (ADR-023, [architecture.md](architecture.md)). The CSV `id` is a TMDB movie id and fills `tmdb_id`.
-- Columns the CSVs do not provide are nullable and stay null: `imdb_id`, `poster_path`, `backdrop_path`, `collection_tmdb_id`, `people.profile_path` (ADR-024). `release_date` is nullable (one CSV row has none). Budget and revenue of `0` in the CSV mean unknown and are stored as null.
+- Columns the CSVs do not provide are nullable: `imdb_id`, `poster_path`, `backdrop_path`, `collection_tmdb_id`, `people.profile_path`. `poster_path` is filled by the optional poster job when `TMDB_API_KEY` is set (ADR-025); the others stay null. `release_date` is nullable (one CSV row has none). Budget and revenue of `0` in the CSV mean unknown and are stored as null.
 - `imported_at` records the last import that touched the row.
 
 ## Users and auth

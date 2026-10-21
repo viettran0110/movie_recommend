@@ -1,14 +1,14 @@
 # Current State and Gap Analysis
 
-Status: **Current** — describes what exists in the repository as of 2026-10-16. Update this file whenever a gap is closed.
+Status: **Current** — describes what exists in the repository as of 2026-10-21. Update this file whenever a gap is closed.
 
 ## Inventory: new stack (Phase 0, current)
 
 | Path | Role | Notes |
 |---|---|---|
-| [apps/api/](../../apps/api/) | FastAPI service + Taskiq worker | Python 3.12, uv. Only endpoint: `GET /api/v1/health` (DB, Redis, Meilisearch). Alembic revision `0001` enables vector, pg_trgm, citext. No domain tables yet |
+| [apps/api/](../../apps/api/) | FastAPI service + Taskiq worker | Python 3.12, uv. Only endpoint: `GET /api/v1/health` (DB, Redis, Meilisearch). Alembic revision `0001` enables vector, pg_trgm, citext. No domain tables yet. `app/integrations/tmdb_client.py`: optional TMDB poster-path client with the `tmdb_api_key` setting (ADR-025); no job calls it yet |
 | [apps/api/openapi.json](../../apps/api/openapi.json) | API contract | Exported by `scripts/export_openapi.py`; source for the web client types |
-| [apps/web/](../../apps/web/) | Next.js 16 frontend | Placeholder home page showing API status; typed openapi-fetch client; Vitest |
+| [apps/web/](../../apps/web/) | Next.js 16 frontend | Placeholder home page showing API status; typed openapi-fetch client; Vitest. `features/titles` `Poster` (TMDB image or placeholder, ADR-025), not used on a page yet |
 | [infra/docker-compose.yml](../../infra/docker-compose.yml) | Local stack | db, redis (Valkey), meili, migrate, api, worker, scheduler, web |
 | [.github/workflows/ci.yml](../../.github/workflows/ci.yml) | CI | api, api-integration, web jobs |
 | [.gitattributes](../../.gitattributes) | Line endings | LF in the repository |
@@ -89,7 +89,7 @@ Legacy files may be modified or deleted (see [decisions.md](decisions.md) ADR-01
 | Phase | Scope |
 |---|---|
 | 0 (done) | Monorepo skeleton, docker-compose (Postgres+pgvector, Valkey, Meilisearch), Alembic, Taskiq worker, lint, CI — done 2026-10-16 |
-| 1 | CSV catalog import from `data/` (ADR-023, no posters per ADR-024), Meilisearch search (autocomplete, typo tolerance, facets), explore, detail page, Bayesian top, content-based "similar" |
+| 1 | CSV catalog import from `data/` (ADR-023), poster job that runs when `TMDB_API_KEY` is set (ADR-025), TMDB attribution, Meilisearch search (autocomplete, typo tolerance, facets), explore, detail page, Bayesian top, content-based "similar" |
 | 2 | Auth, personal list (status/score), public profile list, reviews, favorites |
 | 3 | Events, time-decayed trending, `/me/recommendations` (content-based on the user's list), user-submitted recs; item-CF / ALS only after the own-data threshold ([recommendation.md](recommendation.md)) |
 | 4 | Production deploy, monitoring, backups, rate limiting, admin |

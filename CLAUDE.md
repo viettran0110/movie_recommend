@@ -11,12 +11,12 @@ This is a movie discovery, tracking, and recommendation website: search, explore
 
 Never describe planned components as implemented. Check the filesystem first.
 
-## Repository map (verified 2026-10-16)
+## Repository map (verified 2026-10-21)
 
 | Path | What it is |
 |---|---|
-| `apps/api/` | FastAPI + Taskiq worker (uv, Python 3.12): `app/core`, `app/modules/health`, `app/workers`, `alembic/`, `tests/`, `openapi.json` |
-| `apps/web/` | Next.js 16 (pnpm, Node 24): placeholder home page, `src/lib/api` generated client, Vitest. Read `apps/web/AGENTS.md` before writing Next.js code |
+| `apps/api/` | FastAPI + Taskiq worker (uv, Python 3.12): `app/core`, `app/modules/health`, `app/integrations` (optional TMDB client), `app/workers`, `alembic/`, `tests/`, `openapi.json` |
+| `apps/web/` | Next.js 16 (pnpm, Node 24): placeholder home page, `src/features/titles` Poster, `src/lib/api` generated client, Vitest. Read `apps/web/AGENTS.md` before writing Next.js code |
 | `infra/docker-compose.yml` | Local stack: db, redis, meili, migrate, api, worker, scheduler, web |
 | `.github/workflows/ci.yml` | CI for api (lint, types, tests, contract) and web (lint, types, tests, build) |
 | `app.py` | Legacy Streamlit UI; loads `artifacts/*.pkl`, fetches posters from TMDB |
@@ -55,7 +55,8 @@ Read the listed doc before starting the task. Read several when a task spans are
 - **API changes** update `api-contracts.md`, re-export `apps/api/openapi.json`, and regenerate `apps/web/src/lib/api/schema.d.ts` in the same commit (CI checks both).
 - **Background work** runs as Taskiq tasks in `app/workers/`, with one scheduler per environment.
 - **Recommendations** are computed offline by the worker and stored in Postgres. The API only reads, filters, and re-ranks. Do not extend the pickle approach.
-- **Catalog data** comes from the CSVs in `data/` through the `CatalogSource` importer (ADR-023). No TMDB API calls and no posters in v1 (ADR-024). Never commit the CSVs.
+- **Catalog data** comes from the CSVs in `data/` through the `CatalogSource` importer (ADR-023). Never commit the CSVs.
+- **Posters** are optional (ADR-025): TMDB is used only for `poster_path`, through `app/integrations/tmdb_client.py`, and only when `TMDB_API_KEY` is set. Without it, nothing calls TMDB and the UI shows placeholders.
 - **External calls** go only through an integration client, with timeouts and retries. Tests never hit third-party APIs.
 - **Config** comes from typed settings (pydantic-settings), never from scattered `os.environ` reads.
 - **Open questions** in `decisions.md`: do not silently pick an answer; ask. **New dependencies and images**: pin versions at least two weeks old (pnpm enforces this via `minimumReleaseAge`).

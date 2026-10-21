@@ -24,3 +24,5 @@ def configure_logging(level: str) -> None:
     root = logging.getLogger()
     root.handlers[:] = [handler]
     root.setLevel(level.upper())
+    # httpx logs every request URL at INFO; TMDB v3 keys travel in the query string.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
