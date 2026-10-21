@@ -6,23 +6,27 @@ Instructions for AI agents and developers working in this repository. Read this 
 
 This is a movie discovery, tracking, and recommendation website: search, explore, a personal watch list with status and score, reviews, personalized and community recommendations, and SEO-friendly public pages.
 
-- **Today**: the repository contains only a legacy Streamlit prototype (a content-based recommender over TMDB 5000).
-- **Target**: a modular monolith with a Next.js frontend, a FastAPI backend, PostgreSQL + pgvector, Redis, Meilisearch, and a background job worker (library TBD: Dramatiq or Taskiq). **This is planned; none of it exists yet.**
+- **Target**: a modular monolith with a Next.js frontend, a FastAPI backend, PostgreSQL + pgvector, Redis (Valkey), Meilisearch, and a Taskiq worker.
+- **Today**: the Phase 0 skeleton of that stack exists (health endpoint, migrations, worker, compose, CI). No product features exist yet. A legacy Streamlit prototype (content-based recommender over TMDB 5000) is still in the root.
 
 Never describe planned components as implemented. Check the filesystem first.
 
-## Repository map (verified 2026-10-16)
+## Repository map (verified 2026-10-21)
 
 | Path | What it is |
 |---|---|
+| `apps/api/` | FastAPI + Taskiq worker (uv, Python 3.12): `app/core`, `app/modules/health`, `app/integrations` (optional TMDB client), `app/workers`, `alembic/`, `tests/`, `openapi.json` |
+| `apps/web/` | Next.js 16 (pnpm, Node 24): placeholder home page, `src/features/titles` Poster, `src/lib/api` generated client, Vitest. Read `apps/web/AGENTS.md` before writing Next.js code |
+| `infra/docker-compose.yml` | Local stack: db, redis, meili, migrate, api, worker, scheduler, web |
+| `.github/workflows/ci.yml` | CI for api (lint, types, tests, contract) and web (lint, types, tests, build) |
 | `app.py` | Legacy Streamlit UI; loads `artifacts/*.pkl`, fetches posters from TMDB |
 | `Movie Recommender System Data Analysis.ipynb` | Legacy pipeline: TMDB CSV → CountVectorizer → cosine matrix → pickle |
 | `requirements.txt`, `setup.py`, `pyproject.toml`, `src/` | Legacy packaging; `src/` holds only empty `__init__.py` files |
 | `start.sh` | Legacy PaaS launcher for Streamlit |
-| `data/`, `artifacts/` | Gitignored inputs/outputs. **Empty locally**: CSVs and pickles must be regenerated |
+| `data/`, `artifacts/` | Gitignored inputs/outputs. `data/` holds the TMDB 5000 CSVs (the catalog source, ADR-023); `artifacts/` is empty, pickles must be regenerated |
 | `.claude/docs/` | Design and process docs (routing below) |
 
-Missing today: tests, CI, Docker, a database, an API, a frontend app, linters. The target layout (`apps/web`, `apps/api`, `ml/`, `infra/`) is **planned**; see [architecture.md](.claude/docs/architecture.md).
+Not built yet: domain modules and tables, auth, search indexing, CSV catalog import, `ml/`, production deploy. The target layout, with current/planned markers, is in [architecture.md](.claude/docs/architecture.md).
 
 ## Documentation routing
 
@@ -48,11 +52,14 @@ Read the listed doc before starting the task. Read several when a task spans are
 - **Schema changes** go through an Alembic migration in the same commit.
 - **Media types:** the catalog is `titles` + `media_type` (movies first). Reference `title_id`; shared tables, API schemas, and components must not assume `movie` (per-type URL prefixes like `/movie/...` are fine) ([data-model.md](.claude/docs/data-model.md)).
 - **Search** is a core feature and runs on Meilisearch from Phase 1. Index settings live in code, not in manual config.
-- **API changes** update `api-contracts.md`, and the generated TypeScript client is regenerated and committed alongside.
+- **API changes** update `api-contracts.md`, re-export `apps/api/openapi.json`, and regenerate `apps/web/src/lib/api/schema.d.ts` in the same commit (CI checks both).
+- **Background work** runs as Taskiq tasks in `app/workers/`, with one scheduler per environment.
 - **Recommendations** are computed offline by the worker and stored in Postgres. The API only reads, filters, and re-ranks. Do not extend the pickle approach.
-- **External calls** (TMDB) go only through an integration client, with timeouts and retries. Tests never hit TMDB.
+- **Catalog data** comes from the CSVs in `data/` through the `CatalogSource` importer (ADR-023). Never commit the CSVs.
+- **Posters** are optional (ADR-025): TMDB is used only for `poster_path`, through `app/integrations/tmdb_client.py`, and only when `TMDB_API_KEY` is set. Without it, nothing calls TMDB and the UI shows placeholders.
+- **External calls** go only through an integration client, with timeouts and retries. Tests never hit third-party APIs.
 - **Config** comes from typed settings (pydantic-settings), never from scattered `os.environ` reads.
-- **Open questions** in `decisions.md`: do not silently pick an answer. Use the documented default and say so, or ask.
+- **Open questions** in `decisions.md`: do not silently pick an answer; ask. **New dependencies and images**: pin versions at least two weeks old (pnpm enforces this via `minimumReleaseAge`).
 - **Docs stay true.** When you build something, move it from "planned" to "current" in the relevant doc in the same change.
 
 ## Existing code and change tracking
@@ -80,28 +87,25 @@ Read the listed doc before starting the task. Read several when a task spans are
 ## Testing expectations
 
 - A task is done only when the checks in [testing.md](.claude/docs/testing.md) "Definition of done" pass. Report failures with their real output.
-- No test tooling exists yet. The first change that adds a stack (api/web/ml) also adds its lint, typecheck, and test commands, and updates `testing.md` and this file.
+- CI must stay green. When a new stack is added (for example `ml/`), it adds its own lint, typecheck, and test commands to CI, `testing.md`, and this file.
 - Use a real Postgres for backend tests (no SQLite). New endpoints need success and authorization tests.
 
 ## Commands
 
-Current (legacy; requires CSVs in `data/`, notebook re-run, and `.streamlit/secrets.toml` with a `[tmbd]` section):
+Details: [testing.md](.claude/docs/testing.md), [deployment.md](.claude/docs/deployment.md).
 
 ```bash
-pip install -r requirements.txt
-streamlit run app.py
+cp infra/.env.example infra/.env && docker compose -f infra/docker-compose.yml up -d --build
+cd apps/api && uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest
+cd apps/api && uv run python -m scripts.export_openapi openapi.json   # after API changes
+cd apps/web && pnpm gen:api && pnpm lint && pnpm typecheck && pnpm test && pnpm build
 ```
 
-Planned (not yet available; see [testing.md](.claude/docs/testing.md) and [deployment.md](.claude/docs/deployment.md)):
-
-```bash
-docker compose -f infra/docker-compose.yml up        # local stack
-cd apps/api && uv run pytest                          # backend checks
-cd apps/web && pnpm lint && pnpm typecheck && pnpm test
-```
+Legacy (needs CSVs in `data/`, the notebook re-run, and `.streamlit/secrets.toml` with a `[tmbd]` section): `pip install -r requirements.txt && streamlit run app.py`.
 
 ## Working style
 
 - Be technical and direct.
+- Stop only processes you started, by their PID. Never use broad kill filters.
 - Read the code and the routed doc before editing. Prefer small, reviewable changes.
 - Verify claims against the repository. If something is unknown or undecided, say so instead of guessing.

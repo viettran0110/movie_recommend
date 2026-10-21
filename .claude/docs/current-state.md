@@ -1,8 +1,19 @@
 # Current State and Gap Analysis
 
-Status: **Current** — describes what exists in the repository as of 2026-10-16. Update this file whenever a gap is closed.
+Status: **Current** — describes what exists in the repository as of 2026-10-21. Update this file whenever a gap is closed.
 
-## Inventory
+## Inventory: new stack (Phase 0, current)
+
+| Path | Role | Notes |
+|---|---|---|
+| [apps/api/](../../apps/api/) | FastAPI service + Taskiq worker | Python 3.12, uv. Only endpoint: `GET /api/v1/health` (DB, Redis, Meilisearch). Alembic revision `0001` enables vector, pg_trgm, citext. No domain tables yet. `app/integrations/tmdb_client.py`: optional TMDB poster-path client with the `tmdb_api_key` setting (ADR-025); no job calls it yet |
+| [apps/api/openapi.json](../../apps/api/openapi.json) | API contract | Exported by `scripts/export_openapi.py`; source for the web client types |
+| [apps/web/](../../apps/web/) | Next.js 16 frontend | Placeholder home page showing API status; typed openapi-fetch client; Vitest. `features/titles` `Poster` (TMDB image or placeholder, ADR-025), not used on a page yet |
+| [infra/docker-compose.yml](../../infra/docker-compose.yml) | Local stack | db, redis (Valkey), meili, migrate, api, worker, scheduler, web |
+| [.github/workflows/ci.yml](../../.github/workflows/ci.yml) | CI | api, api-integration, web jobs |
+| [.gitattributes](../../.gitattributes) | Line endings | LF in the repository |
+
+## Inventory: legacy prototype
 
 | Path | Role | Notes |
 |---|---|---|
@@ -13,11 +24,11 @@ Status: **Current** — describes what exists in the repository as of 2026-10-16
 | [pyproject.toml](../../pyproject.toml) | Build system only | setuptools backend, no project metadata |
 | `src/__init__.py`, `src/utils/__init__.py` | Empty package | No code |
 | [start.sh](../../start.sh) | PaaS launch | Writes `~/.streamlit/config.toml`, runs on `$PORT` |
-| `data/` | Input CSVs (gitignored) | Expects `tmdb_5000_movies.csv`, `tmdb_5000_credits.csv` — **not present locally** |
+| `data/` | Input CSVs (gitignored) | `tmdb_5000_movies.csv`, `tmdb_5000_credits.csv` — present locally (4,803 movies each, added 2026-10-18). Also the planned catalog source (ADR-023) |
 | `artifacts/` | Model output (gitignored) | Expects `movie_list.pkl`, `similarity.pkl` — **not present locally** |
 | [README.md](../../README.md) | Run instructions | venv + `streamlit run app.py` |
 
-Not present: tests, CI, Docker, database, auth, search engine, frontend framework, linters, lockfiles.
+Not present yet: domain tables, auth, search indexing, CSV catalog import, recommender code (`ml/`), production deploy, monitoring, backups.
 
 ## How the prototype works
 
@@ -53,13 +64,13 @@ The app fails at startup if `artifacts/*.pkl` is missing.
 
 | Capability | Current | Target (see [architecture.md](architecture.md)) |
 |---|---|---|
-| UI | Streamlit single page | Next.js SSR site |
-| API | none | FastAPI `/api/v1` ([api-contracts.md](api-contracts.md)) |
-| Storage | pickle files | PostgreSQL + pgvector ([data-model.md](data-model.md)) |
+| UI | Streamlit page; Next.js placeholder | Next.js SSR site |
+| API | health endpoint only | FastAPI `/api/v1` ([api-contracts.md](api-contracts.md)) |
+| Storage | pickle files; Postgres with extensions only | PostgreSQL + pgvector ([data-model.md](data-model.md)) |
 | Search | selectbox over titles | Meilisearch |
 | Users / lists / ratings | none | auth + `user_title_entries` ([security.md](security.md)) |
 | Recommendation | content-based CountVectorizer | tiered hybrid ([recommendation.md](recommendation.md)) |
-| Tests / CI / deploy | none | [testing.md](testing.md), [deployment.md](deployment.md) |
+| Tests / CI / deploy | api + web tests and CI exist; no deploy | [testing.md](testing.md), [deployment.md](deployment.md) |
 
 ## Proposed legacy migration (not executed)
 
@@ -70,15 +81,15 @@ Legacy files may be modified or deleted (see [decisions.md](decisions.md) ADR-01
 | Notebook | `git mv` → `ml/notebooks/` |
 | Notebook pipeline logic | Re-implement in `ml/recsys/content.py` (TF-IDF/embeddings) |
 | `app.py`, `start.sh` | Delete once the Next.js movie detail + similar movies feature replaces them |
-| `setup.py`, `requirements.txt`, `src/` | Delete; replaced by `apps/api/pyproject.toml` (uv) |
+| `setup.py`, `requirements.txt`, `pyproject.toml` (root), `src/` | Delete; replaced by `apps/api/pyproject.toml` (uv), which now exists |
 | `data/`, `artifacts/` dirs | Keep as gitignored local dirs for ML inputs/outputs, or move under `ml/` |
 
 ## Roadmap (planned)
 
 | Phase | Scope |
 |---|---|
-| 0 | Monorepo skeleton, docker-compose (Postgres+pgvector, Redis, Meilisearch), Alembic, lint, CI |
-| 1 | Full TMDB import + daily sync, Meilisearch search (autocomplete, typo tolerance, facets), explore, detail page, Bayesian top, content-based "similar" |
+| 0 (done) | Monorepo skeleton, docker-compose (Postgres+pgvector, Valkey, Meilisearch), Alembic, Taskiq worker, lint, CI — done 2026-10-16 |
+| 1 | CSV catalog import from `data/` (ADR-023), poster job that runs when `TMDB_API_KEY` is set (ADR-025), TMDB attribution, Meilisearch search (autocomplete, typo tolerance, facets), explore, detail page, Bayesian top, content-based "similar" |
 | 2 | Auth, personal list (status/score), public profile list, reviews, favorites |
 | 3 | Events, time-decayed trending, `/me/recommendations` (content-based on the user's list), user-submitted recs; item-CF / ALS only after the own-data threshold ([recommendation.md](recommendation.md)) |
 | 4 | Production deploy, monitoring, backups, rate limiting, admin |

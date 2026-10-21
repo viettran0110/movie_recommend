@@ -4,7 +4,7 @@ Status: tier 0 is **Current** (legacy prototype). Every other tier is **Planned*
 
 **MVP scope (ADR-015, independent of MovieLens):**
 - Tier 1: Bayesian top and time-decayed trending.
-- Tier 2: content-based on TMDB metadata.
+- Tier 2: content-based on catalog metadata (from the TMDB 5000 CSVs, ADR-023).
 - User ratings, list, and status tracking ([data-model.md](data-model.md)).
 
 Tiers 3–5 require interaction data from this site's own users and start only once the threshold in "Data sources" is met.
@@ -86,7 +86,7 @@ The pipeline is a content-based CountVectorizer over the tags overview, genres, 
 
 ## Data sources
 
-- **Catalog features** come from the TMDB API: genres, keywords, credits, overview, popularity, and vote counts (ADR-014).
+- **Catalog features** come from the TMDB 5000 CSVs imported into the catalog tables: genres, keywords, credits, overview, popularity, and vote counts (ADR-023). Training reads the tables, never the CSVs directly.
 - **Interactions** come only from this site: `user_title_entries` (status, score) and `user_events`.
 - **No external rating datasets.** MovieLens is not used, not even for experiments (ADR-015). Offline evaluation runs on the site's own interaction logs.
 - **Before real data exists**: tier 1 rankings use TMDB `tmdb_vote_avg`/`tmdb_vote_count` as the R and v inputs, then blend toward site scores as `score_count` grows.

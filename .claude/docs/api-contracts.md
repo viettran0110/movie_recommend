@@ -1,11 +1,12 @@
 # API Contracts
 
-Status: **Planned draft.** No API exists yet. FastAPI's generated OpenAPI schema becomes the source of truth once implemented. Keep this file as the human summary and update it in the same change.
+Status: **Planned draft**, except `GET /api/v1/health`, which is **current**. FastAPI's generated OpenAPI schema becomes the source of truth once implemented. Keep this file as the human summary and update it in the same change.
 
 ## Conventions
 
 - Base path `/api/v1`, JSON only, `snake_case` fields.
-- Health check: `GET /api/v1/health` returns `{"status":"ok"}`. It checks DB, Redis, and Meilisearch connectivity.
+- Health check (current): `GET /api/v1/health` returns `{"status":"ok","checks":{"database":true,"redis":true,"meilisearch":true}}`. If any check fails or exceeds 2 s, it returns 503 with `"status":"degraded"` and the same `checks` shape. Error details are never returned.
+- Docs: Swagger UI at `/api/v1/docs`, schema at `/api/v1/openapi.json`. The committed copy is `apps/api/openapi.json`.
 - **Media types**: catalog resources are `titles`. Each title response includes `media_type` (`movie` at launch). List endpoints accept `?media_type=`, which defaults to all enabled types. Type-specific fields sit in a nested object (`movie: {runtime, ...}`). See [data-model.md](data-model.md) (ADR-019).
 - Pagination: `?page=1&page_size=20` (max 100) returns `{"items": [...], "page", "page_size", "total"}`. Use cursor pagination (`?cursor=`) for event-style feeds.
 - Errors: `{"error": {"code": "string_slug", "message": "human readable", "details": {...}}}` with the matching HTTP status. Validation errors return 422, with `details` listing field errors.
@@ -46,7 +47,7 @@ Auth column: **—** public, **U** authenticated user, **A** admin. **RL** means
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | GET | `/search?q=&media_type=&genres=&year_from=&year_to=&min_score=&sort=&page=` | — RL | Full results with facet counts (`facets` object) |
-| GET | `/search/suggest?q=&limit=` | — RL | Autocomplete: max 10 lightweight hits (id, media_type, title, year, poster_path); target p95 < 100 ms |
+| GET | `/search/suggest?q=&limit=` | — RL | Autocomplete: max 10 lightweight hits (id, media_type, title, year, poster_path — null until the optional poster job fills it, ADR-025); target p95 < 100 ms |
 
 - Typo tolerance, prefix search, and ranking rules are configured in the Meilisearch index settings and kept in code (`app/integrations/meili_client.py`, planned). They are applied by a settings-sync job, never configured by hand.
 - `sort` and filter fields are validated against an allow-list before they reach Meilisearch.
@@ -75,7 +76,7 @@ Auth column: **—** public, **U** authenticated user, **A** admin. **RL** means
 
 | Key pattern | TTL | Invalidated by |
 |---|---|---|
-| `title:{id}` | 1 h | Title update or TMDB sync |
+| `title:{id}` | 1 h | Title update or catalog import |
 | `explore:top:{media_type}:{sort}`, `explore:trending:{media_type}:{window}` | Until the next scheduled recompute | Recompute job |
 | `similar:{id}` | 24 h | Recommender training job |
 | `recs:user:{user_id}` | 24 h | Change to the user's list or score; training job |

@@ -8,6 +8,7 @@ Status: the rules in "Always" apply **now**, to all code including the legacy pr
 - Examples use placeholders such as `<TMDB_API_KEY>`, never real-looking values.
 - If a secret is committed by accident, stop and tell the user. The secret must be rotated; rewriting history does not undo the leak.
 - Do not log passwords, tokens, cookies, `Authorization` headers, password-reset links, or full request bodies of auth endpoints.
+- `TMDB_API_KEY` is backend-only (API and worker env). Never put it in `apps/web` or a `NEXT_PUBLIC_*` variable; the browser only needs public CDN image URLs. A v3 key travels in the query string, so `configure_logging` keeps httpx request logs below INFO and TMDB client errors never include URLs.
 - Do not run destructive database operations (DROP, TRUNCATE, mass UPDATE/DELETE, destructive migrations, restoring over a database) without explicit user approval.
 
 ## Authentication (planned)
@@ -79,7 +80,7 @@ Exceeding a limit returns 429 with `Retry-After`.
 
 ## Environment variables (example, placeholders only)
 
-A future `.env.example` should look like this. Never commit a real `.env`.
+Current templates: [apps/api/.env.example](../../apps/api/.env.example), [apps/web/.env.example](../../apps/web/.env.example), and [infra/.env.example](../../infra/.env.example) for compose credentials. The full planned set is below. Add each variable to the relevant template, and to `app/core/config.py`, in the change that starts using it. Never commit a real `.env`.
 
 ```dotenv
 APP_ENV=development
@@ -93,6 +94,8 @@ ACCESS_TOKEN_TTL_SECONDS=900
 REFRESH_TOKEN_TTL_SECONDS=2592000
 COOKIE_SECURE=true
 CORS_ORIGINS=http://localhost:3000
+CATALOG_DATA_DIR=../../data
+# Optional (ADR-025): empty disables TMDB. v3 API key or v4 API Read Access Token.
 TMDB_API_KEY=<TMDB_API_KEY>
 GOOGLE_CLIENT_ID=<GOOGLE_CLIENT_ID>
 GOOGLE_CLIENT_SECRET=<GOOGLE_CLIENT_SECRET>

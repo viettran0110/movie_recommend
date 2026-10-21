@@ -1,0 +1,6 @@
+allowBuilds:
+  sharp: false
+  unrs-resolver: false
+
+# Supply-chain guard: only install versions published at least 14 days ago.
+minimumReleaseAge: 20160

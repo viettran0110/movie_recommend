@@ -1,6 +1,9 @@
 # Architecture
 
-Status: **Planned** — none of the components below exist yet. Current code is the Streamlit prototype ([current-state.md](current-state.md)). Rationale for each choice: [decisions.md](decisions.md).
+Status:
+- **Phase 0 skeleton is current**: `apps/api` (core, health module, Alembic, Taskiq worker), `apps/web` (Next.js, typed API client), `infra/docker-compose.yml`, CI.
+- **Planned**: every domain module, `ml/`, production infrastructure.
+- Markers in the layout below show which is which. What exists today is listed in [current-state.md](current-state.md). Rationale for each choice: [decisions.md](decisions.md).
 
 ## Style
 
@@ -26,8 +29,8 @@ SSR/ISR, UI         modules: auth, users, titles, search,
                   +pgvector    cache, rate    title index
                   +pg_trgm     limit, broker
                        ▲          │
-                       └── job worker (Q4) + APScheduler
-                           (TMDB sync, reindex, train recs,
+                       └── Taskiq worker + Taskiq scheduler
+                           (CSV catalog import, reindex, train recs,
                             trending/top, email)
 ```
 
@@ -36,7 +39,7 @@ SSR/ISR, UI         modules: auth, users, titles, search,
 - **Read path (movie page)**:
   1. Next.js server component calls `GET /api/v1/titles/{id}`.
   2. The API checks the Redis cache, falls back to Postgres, then populates the cache.
-  3. Posters are served from the TMDB image CDN via `next/image`. They are never stored locally.
+  3. Posters are optional (ADR-025). When `poster_path` is set, the `Poster` component renders the TMDB CDN image (`https://image.tmdb.org/t/p/<size><poster_path>`); otherwise it renders a generated placeholder. Images are never stored locally.
 - **Search**:
   1. Postgres is the source of truth.
   2. Writes to `titles` enqueue `reindex_title(id)`, and the worker upserts into Meilisearch.
@@ -47,36 +50,39 @@ SSR/ISR, UI         modules: auth, users, titles, search,
   2. Online: the API reads those tables, filters, re-ranks, and caches the result.
   3. The API never trains models or loads large artifacts into memory.
   4. Details: [recommendation.md](recommendation.md).
-- **Ingestion**:
-  1. A scheduled job pulls TMDB changes, then upserts titles (with `movie_details`), credits, and genres.
-  2. It then enqueues reindex jobs.
-  3. Source: the full TMDB API (ADR-014).
-     - Initial bulk import from TMDB daily ID exports, then a daily sync through the `/changes` endpoints.
-     - Respect TMDB rate limits and show the TMDB attribution.
-     - Only `movie` is ingested at launch; ingestion is keyed by `media_type` so other types can be added (ADR-019).
+- **Ingestion** (planned, ADR-023):
+  1. Source: the TMDB 5000 CSVs in the repository-root `data/` directory (gitignored, never committed). `tmdb_5000_movies.csv` and `tmdb_5000_credits.csv` are joined on `id` = `movie_id`. Nested columns (genres, keywords, cast, crew, companies, countries, languages) hold JSON arrays and are parsed with `json.loads`, not `ast.literal_eval`.
+  2. An on-demand Taskiq task `import_catalog` (also runnable as `python -m scripts.import_catalog`) reads rows through a `CatalogSource`, validates each one with a Pydantic schema, and upserts titles (with `movie_details`), genres, keywords, people, and credits keyed on (`media_type`, `tmdb_id`). It is idempotent: re-running it updates rows in place and never deletes. Invalid rows are counted and logged by id, not fatal.
+  3. It then enqueues reindex jobs for the titles it changed.
+  4. There is no scheduled sync. The catalog changes only when the CSVs change and the import is re-run.
+  5. `CatalogSource` is the extension point: `Tmdb5000CsvSource` is the only implementation. A TMDB API source, or a source for another `media_type` (ADR-019), plugs in behind the same interface.
+  6. The directory comes from the `CATALOG_DATA_DIR` setting. In compose, `data/` is mounted read-only into the worker.
+  7. Poster enrichment (planned, ADR-025): after an import, a Taskiq task `enrich_posters` runs only if `create_tmdb_client(settings)` returns a client, that is, if `TMDB_API_KEY` is set. It asks TMDB for the `poster_path` of each title whose `poster_path` is null and saves it, then invalidates `title:{id}` and enqueues reindex jobs. Without a key it logs that TMDB is disabled and exits. Adding a key later is the only step needed to get posters.
 
-## Target repository layout (planned)
+## Repository layout (target; `[current]` marks what exists)
 
 ```
 apps/
-  web/                    Next.js (App Router, TypeScript, Tailwind, shadcn/ui)
+  web/                    [current] Next.js 16 (App Router, TypeScript, Tailwind 4); shadcn/ui planned
     src/app/              routes: /, /movie/[id]-[slug] (one prefix per media_type), /search, /explore, /top,
                           /genre/[slug], /u/[username]/list, /login
     src/components/       shared UI (ui/ = shadcn primitives)
-    src/features/<domain>/ domain components + hooks (titles, search, lists, auth, recs)
-    src/lib/api/          generated OpenAPI client — do not hand-edit
-  api/                    FastAPI
-    app/main.py
-    app/core/             config (pydantic-settings), db, security, logging, cache
-    app/modules/<domain>/ router.py, schemas.py, service.py, repository.py, models.py
-    app/integrations/     tmdb_client.py, meili_client.py
-    app/workers/          job definitions (library per Q4), scheduler.py
-    alembic/
-    tests/
+    src/features/<domain>/ domain components + hooks (titles, search, lists, auth, recs); [current] system/, titles/ (Poster)
+    src/lib/api/          [current] openapi-fetch client + schema.d.ts generated from ../api/openapi.json — do not hand-edit
+  api/                    [current] FastAPI
+    app/main.py           [current] app factory + lifespan
+    app/core/             [current] config, db, logging; [planned] security, cache
+    app/modules/<domain>/ router.py, schemas.py, service.py, repository.py, models.py; [current] health/
+    app/modules/catalog/  importer service; sources/ (CatalogSource protocol, tmdb5000_csv.py)
+    app/integrations/     [current] tmdb_client.py (optional poster paths, ADR-025); [planned] meili_client.py
+    app/workers/          [current] Taskiq broker.py, scheduler.py, tasks.py
+    alembic/              [current] async env, revisions in versions/
+    scripts/              [current] export_openapi.py → openapi.json (committed API contract)
+    tests/                [current] unit; integration/ (testcontainers)
 ml/                       offline training/evaluation, imported by workers
   notebooks/  recsys/  evaluation/  pipelines/
-infra/                    docker-compose*.yml, Caddyfile, monitoring config
-.github/workflows/
+infra/                    [current] docker-compose.yml (dev); [planned] prod compose, Caddyfile, monitoring
+.github/workflows/        [current] ci.yml; [planned] deploy.yml
 ```
 
 ## Backend layering rules
@@ -87,7 +93,7 @@ infra/                    docker-compose*.yml, Caddyfile, monitoring config
 - `schemas.py`: request/response models. Never return ORM objects directly.
 - `models.py`: ORM tables. Every change requires an Alembic migration ([data-model.md](data-model.md)).
 - Config comes only from `app/core/config.py` (pydantic-settings). No `os.environ` lookups scattered through modules.
-- External HTTP calls (TMDB) go through `app/integrations/`, with timeouts, retries, and backoff.
+- External HTTP calls go through `app/integrations/`, with timeouts, retries, and backoff. That covers TMDB, used only for optional poster paths (ADR-025), and Meilisearch. The catalog is read from local files (ADR-023).
 
 ## Frontend rules
 
