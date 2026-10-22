@@ -1,5 +1,6 @@
-### dependency
+# Legacy Streamlit prototype only (app.py + notebook). The new stack uses the uv workspace.
 streamlit
-
-### local packages -
--e . 
+pandas
+numpy
+scikit-learn
+requests
