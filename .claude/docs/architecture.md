@@ -1,8 +1,8 @@
 # Architecture
 
 Status:
-- **Phase 0 skeleton is current**: `apps/api` (core, health module, Alembic, Taskiq worker), `apps/web` (Next.js, typed API client), `infra/docker-compose.yml`, CI.
-- **Planned**: every domain module, `ml/`, production infrastructure.
+- **Phase 0 skeleton is current**: `apps/api` (core, health module, Alembic, Taskiq worker), `apps/web` (Next.js, typed API client), `infra/docker-compose.yml`, CI, and the root uv workspace with an empty `ml/` package (ADR-026).
+- **Planned**: every domain module, the `ml/` pipelines, production infrastructure.
 - Markers in the layout below show which is which. What exists today is listed in [current-state.md](current-state.md). Rationale for each choice: [decisions.md](decisions.md).
 
 ## Style
@@ -62,6 +62,7 @@ SSR/ISR, UI         modules: auth, users, titles, search,
 ## Repository layout (target; `[current]` marks what exists)
 
 ```
+pyproject.toml, uv.lock   [current] uv workspace root (members apps/api, ml; ADR-026); one .venv
 apps/
   web/                    [current] Next.js 16 (App Router, TypeScript, Tailwind 4); shadcn/ui planned
     src/app/              routes: /, /movie/[id]-[slug] (one prefix per media_type), /search, /explore, /top,
@@ -79,8 +80,10 @@ apps/
     alembic/              [current] async env, revisions in versions/
     scripts/              [current] export_openapi.py → openapi.json (committed API contract)
     tests/                [current] unit; integration/ (testcontainers)
-ml/                       offline training/evaluation, imported by workers
-  notebooks/  recsys/  evaluation/  pipelines/
+ml/                       [current] package `movie-ml` (uv workspace member): pure offline code, imported by workers
+  src/movie_ml/           [current] package root; [planned] content.py (TF-IDF similar, ADR-027), evaluation/
+  tests/                  [current] boundary test (no app/DB/HTTP imports)
+  notebooks/              [planned] legacy notebook moves here
 infra/                    [current] docker-compose.yml (dev); [planned] prod compose, Caddyfile, monitoring
 .github/workflows/        [current] ci.yml; [planned] deploy.yml
 ```
@@ -92,6 +95,7 @@ infra/                    [current] docker-compose.yml (dev); [planned] prod com
 - `repository.py`: SQLAlchemy 2.0 async queries. Returns ORM objects or plain data.
 - `schemas.py`: request/response models. Never return ORM objects directly.
 - `models.py`: ORM tables. Every change requires an Alembic migration ([data-model.md](data-model.md)).
+- Offline ML code lives in `ml/` (`movie_ml`). It never imports `app`, so a worker task does the I/O: it loads rows through a repository, calls `movie_ml`, and writes the results through a repository (ADR-026).
 - Config comes only from `app/core/config.py` (pydantic-settings). No `os.environ` lookups scattered through modules.
 - External HTTP calls go through `app/integrations/`, with timeouts, retries, and backoff. That covers TMDB, used only for optional poster paths (ADR-025), and Meilisearch. The catalog is read from local files (ADR-023).
 

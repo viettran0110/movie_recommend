@@ -1,0 +1,17 @@
+# Used by the api image (apps/api/Dockerfile), whose build context is the repo root.
+# Allowlist: everything else (data/, artifacts/, apps/web, .git, legacy files) stays out.
+*
+!pyproject.toml
+!uv.lock
+!apps/api
+!ml
+
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/.env
+apps/api/tests
+ml/tests
+ml/notebooks

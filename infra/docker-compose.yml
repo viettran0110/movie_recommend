@@ -3,6 +3,11 @@
 #   docker compose -f infra/docker-compose.yml up --build
 name: movie-dev
 
+# The api image builds from the repo root (uv workspace with ml/, ADR-026).
+x-api-build: &api-build
+  context: ..
+  dockerfile: apps/api/Dockerfile
+
 x-api-env: &api-env
   APP_ENV: development
   DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
@@ -51,25 +56,25 @@ services:
       retries: 20
 
   migrate:
-    build: ../apps/api
+    build: *api-build
     command: ["alembic", "upgrade", "head"]
     environment: *api-env
     depends_on:
       db: { condition: service_healthy }
 
   api:
-    build: ../apps/api
+    build: *api-build
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     environment: *api-env
     ports: ["127.0.0.1:8000:8000"]
-    volumes: ["../apps/api/app:/app/app"]
+    volumes: ["../apps/api/app:/app/apps/api/app"]
     depends_on:
       migrate: { condition: service_completed_successfully }
       redis: { condition: service_healthy }
       meili: { condition: service_healthy }
 
   worker:
-    build: ../apps/api
+    build: *api-build
     command: ["taskiq", "worker", "app.workers.broker:broker", "app.workers.tasks"]
     environment: *api-env
     depends_on:
@@ -77,7 +82,7 @@ services:
       redis: { condition: service_healthy }
 
   scheduler:
-    build: ../apps/api
+    build: *api-build
     command: ["taskiq", "scheduler", "app.workers.scheduler:scheduler", "app.workers.tasks"]
     environment: *api-env
     depends_on:

@@ -1,6 +1,6 @@
 # Current State and Gap Analysis
 
-Status: **Current** — describes what exists in the repository as of 2026-10-21. Update this file whenever a gap is closed.
+Status: **Current** — describes what exists in the repository as of 2026-10-22. Update this file whenever a gap is closed.
 
 ## Inventory: new stack (Phase 0, current)
 
@@ -12,6 +12,8 @@ Status: **Current** — describes what exists in the repository as of 2026-10-21
 | [infra/docker-compose.yml](../../infra/docker-compose.yml) | Local stack | db, redis (Valkey), meili, migrate, api, worker, scheduler, web |
 | [.github/workflows/ci.yml](../../.github/workflows/ci.yml) | CI | api, api-integration, web jobs |
 | [.gitattributes](../../.gitattributes) | Line endings | LF in the repository |
+| [pyproject.toml](../../pyproject.toml), `uv.lock` | uv workspace root | Members `apps/api` and `ml`; one lock and one `.venv` at the root (ADR-026) |
+| [ml/](../../ml/) | Package `movie-ml` | Empty pure library plus a boundary test; `apps/api` depends on it. The TF-IDF pipeline (ADR-027) lands in Phase 1 |
 
 ## Inventory: legacy prototype
 
@@ -19,16 +21,13 @@ Status: **Current** — describes what exists in the repository as of 2026-10-21
 |---|---|---|
 | [app.py](../../app.py) | Streamlit UI | Select a title → show 5 similar movies with posters |
 | `Movie Recommender System Data Analysis.ipynb` | Offline pipeline | Builds `artifacts/*.pkl` from TMDB 5000 CSVs |
-| [requirements.txt](../../requirements.txt) | Deps | `streamlit` + `-e .` (installs `setup.py`) |
-| [setup.py](../../setup.py) | Packaging | Package `src/`; deps: streamlit, pandas, numpy, scikit-learn, requests; `python_requires>=3.7` |
-| [pyproject.toml](../../pyproject.toml) | Build system only | setuptools backend, no project metadata |
-| `src/__init__.py`, `src/utils/__init__.py` | Empty package | No code |
+| [requirements.txt](../../requirements.txt) | Deps | Unpinned prototype deps: streamlit, pandas, numpy, scikit-learn, requests. The old `setup.py`, root setuptools `pyproject.toml` and empty `src/` were removed on 2026-10-22 |
 | [start.sh](../../start.sh) | PaaS launch | Writes `~/.streamlit/config.toml`, runs on `$PORT` |
 | `data/` | Input CSVs (gitignored) | `tmdb_5000_movies.csv`, `tmdb_5000_credits.csv` — present locally (4,803 movies each, added 2026-10-18). Also the planned catalog source (ADR-023) |
 | `artifacts/` | Model output (gitignored) | Expects `movie_list.pkl`, `similarity.pkl` — **not present locally** |
 | [README.md](../../README.md) | Run instructions | venv + `streamlit run app.py` |
 
-Not present yet: domain tables, auth, search indexing, CSV catalog import, recommender code (`ml/`), production deploy, monitoring, backups.
+Not present yet: domain tables, auth, search indexing, CSV catalog import, recommender pipelines in `ml/`, production deploy, monitoring, backups.
 
 ## How the prototype works
 
@@ -57,7 +56,7 @@ The app fails at startup if `artifacts/*.pkl` is missing.
 - Every recommendation makes 5 TMDB HTTP calls, with no timeout and no error handling. `@st.cache_data` mitigates repeat calls only.
 - `movies[movies['title'] == movie].index[0]` breaks on duplicate titles.
 - The secret section is misspelled `tmbd` (it should be `tmdb`). Keep this in mind if the legacy app is reused.
-- Dependencies are split between `requirements.txt` and `setup.py`, with no pinning and `python>=3.7`.
+- Prototype dependencies in `requirements.txt` are unpinned.
 - `start.sh` disables XSRF protection.
 
 ## Gap vs target
@@ -70,7 +69,7 @@ The app fails at startup if `artifacts/*.pkl` is missing.
 | Search | selectbox over titles | Meilisearch |
 | Users / lists / ratings | none | auth + `user_title_entries` ([security.md](security.md)) |
 | Recommendation | content-based CountVectorizer | tiered hybrid ([recommendation.md](recommendation.md)) |
-| Tests / CI / deploy | api + web tests and CI exist; no deploy | [testing.md](testing.md), [deployment.md](deployment.md) |
+| Tests / CI / deploy | api, ml and web tests and CI exist; no deploy | [testing.md](testing.md), [deployment.md](deployment.md) |
 
 ## Proposed legacy migration (not executed)
 
@@ -79,9 +78,10 @@ Legacy files may be modified or deleted (see [decisions.md](decisions.md) ADR-01
 | Legacy | Proposed destination |
 |---|---|
 | Notebook | `git mv` → `ml/notebooks/` |
-| Notebook pipeline logic | Re-implement in `ml/recsys/content.py` (TF-IDF/embeddings) |
+| Notebook pipeline logic | Re-implement in `ml/src/movie_ml/content.py` (weighted TF-IDF, ADR-027) |
 | `app.py`, `start.sh` | Delete once the Next.js movie detail + similar movies feature replaces them |
-| `setup.py`, `requirements.txt`, `pyproject.toml` (root), `src/` | Delete; replaced by `apps/api/pyproject.toml` (uv), which now exists |
+| `setup.py`, `pyproject.toml` (root), `src/` | Done 2026-10-22: removed; the root `pyproject.toml` is now the uv workspace root |
+| `requirements.txt` | Delete together with `app.py` |
 | `data/`, `artifacts/` dirs | Keep as gitignored local dirs for ML inputs/outputs, or move under `ml/` |
 
 ## Roadmap (planned)

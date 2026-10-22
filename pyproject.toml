@@ -1,0 +1,4 @@
+# uv workspace root (ADR-026). Virtual: it has no [project] of its own.
+# One lockfile (uv.lock) and one .venv for every Python member.
+[tool.uv.workspace]
+members = ["apps/api", "ml"]

@@ -35,9 +35,10 @@ The pipeline is a content-based CountVectorizer over the tags overview, genres, 
 
 ### 2. Content-based (detail page "Similar", new items)
 
-- Use TF-IDF per field with weights (genres, keywords, director, top cast, overview) instead of one concatenated bag of words.
-- Or use sentence-transformers embeddings on title + overview (`all-MiniLM-L6-v2`, 384 dims; switch to a multilingual-e5 model when Vietnamese is added, per ADR-020), stored in pgvector and queried with HNSW kNN.
+- **Chosen for Phase 1 (ADR-027):** TF-IDF per field with weights (genres, keywords, director, top cast, overview) instead of one concatenated bag of words. Code lives in `ml/` (`movie_ml`, ADR-026); the worker stores the top-K neighbours in `item_similarities`.
+- **Later, as a new `model_version`:** sentence-transformers embeddings on title + overview (`all-MiniLM-L6-v2`, 384 dims; switch to a multilingual-e5 model when Vietnamese is added, per ADR-020), stored in pgvector and queried with HNSW kNN. It must beat the TF-IDF version before it ships.
 - Combine with metadata overlap (genres, director) as a blended score.
+- **Evaluation before interaction data exists:** the popularity-baseline gate below needs site interactions, which do not exist yet. Until they do, a tier-2 model ships with a sanity report instead: genre overlap@10 against random and popularity neighbours, plus hand-checked examples, recorded in the PR.
 
 ### 3. Collaborative filtering (personalized "For you", post-MVP)
 
