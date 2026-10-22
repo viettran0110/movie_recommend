@@ -1,3 +1,4 @@
-[build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
+# uv workspace root (ADR-026). Virtual: it has no [project] of its own.
+# One lockfile (uv.lock) and one .venv for every Python member.
+[tool.uv.workspace]
+members = ["apps/api", "ml"]

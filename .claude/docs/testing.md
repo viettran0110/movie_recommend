@@ -1,7 +1,7 @@
 # Testing
 
 Status:
-- **Current**: backend (`apps/api`) and frontend (`apps/web`) checks, run in CI by [.github/workflows/ci.yml](../../.github/workflows/ci.yml).
+- **Current**: backend (`apps/api`), `ml/`, and frontend (`apps/web`) checks, run in CI by [.github/workflows/ci.yml](../../.github/workflows/ci.yml).
 - **Planned**: Testing Library, Playwright e2e, and recommender evaluation. These become required from the change that introduces their tooling; when that happens, update this file and [CLAUDE.md](../../CLAUDE.md).
 
 ## Backend (`apps/api`)
@@ -46,10 +46,16 @@ curl -s localhost:8000/api/v1/health      # expect 200 and every check true
 curl -s localhost:3000 | grep data-status # expect "ok"
 ```
 
-## Recommender (`ml/`, planned)
+## ML package (`ml/`)
 
-- Unit tests for the metric functions (Recall@K, NDCG@K) on small hand-computed fixtures.
-- An offline evaluation report compared against the popularity baseline. This is a gate before a model change ships ([recommendation.md](recommendation.md)).
+- **Current**: ruff, mypy (strict), and pytest, run by the `ml` CI job. `tests/test_boundary.py` fails if any `movie_ml` module imports `app`, the DB, settings, or HTTP libraries (ADR-026).
+- Tests use small in-memory fixtures. They never read `data/` or the database.
+- Planned: unit tests for the metric functions (Recall@K, NDCG@K) on small hand-computed fixtures, and an offline evaluation report compared against the popularity baseline. That report is a gate before a model change ships ([recommendation.md](recommendation.md)).
+
+```bash
+cd ml
+uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest
+```
 
 ## Definition of done
 

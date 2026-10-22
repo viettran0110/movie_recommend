@@ -30,7 +30,7 @@ docker compose -f infra/docker-compose.yml down        # keeps volumes; `down -v
 - Pin image versions; never use `latest`. Pick versions at least two weeks old. When you change the Postgres tag, update `tests/integration/test_migrations.py` too.
 - Ports bind to 127.0.0.1 only.
 - `down -v` deletes the local database and search index. Run it only when you mean to.
-- Images: api uses a uv build stage on Debian trixie and runs as a non-root user on `python:3.12-slim-trixie`. web runs the standalone Next.js server on `node:24.16.0-trixie-slim` as a non-root user.
+- Images: api uses a uv build stage on Debian trixie and runs as a non-root user on `python:3.12-slim-trixie`. Its build context is the repository root, because the uv workspace (root `pyproject.toml` + `uv.lock`) spans `apps/api` and `ml/` (ADR-026). The root `.dockerignore` is an allowlist: only the workspace manifests, `apps/api`, and `ml` enter the context, so `data/`, `artifacts/` and `.env` files never do. `movie-ml` is installed non-editable, so the runtime stage copies only `.venv` and `apps/api`. Build it alone with `docker build -f apps/api/Dockerfile .` from the repository root. web runs the standalone Next.js server on `node:24.16.0-trixie-slim` as a non-root user.
 
 ## Production (planned)
 

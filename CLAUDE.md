@@ -11,22 +11,24 @@ This is a movie discovery, tracking, and recommendation website: search, explore
 
 Never describe planned components as implemented. Check the filesystem first.
 
-## Repository map (verified 2026-10-21)
+## Repository map (verified 2026-10-22)
 
 | Path | What it is |
 |---|---|
+| `pyproject.toml`, `uv.lock` | uv workspace root (members `apps/api`, `ml`; ADR-026). One `.venv` at the root |
 | `apps/api/` | FastAPI + Taskiq worker (uv, Python 3.12): `app/core`, `app/modules/health`, `app/integrations` (optional TMDB client), `app/workers`, `alembic/`, `tests/`, `openapi.json` |
 | `apps/web/` | Next.js 16 (pnpm, Node 24): placeholder home page, `src/features/titles` Poster, `src/lib/api` generated client, Vitest. Read `apps/web/AGENTS.md` before writing Next.js code |
+| `ml/` | Package `movie-ml`: pure offline recommender code imported by worker tasks; never imports `app` or the DB. Empty so far |
 | `infra/docker-compose.yml` | Local stack: db, redis, meili, migrate, api, worker, scheduler, web |
-| `.github/workflows/ci.yml` | CI for api (lint, types, tests, contract) and web (lint, types, tests, build) |
+| `.github/workflows/ci.yml` | CI for api (lint, types, tests, contract), ml (lint, types, tests) and web (lint, types, tests, build) |
 | `app.py` | Legacy Streamlit UI; loads `artifacts/*.pkl`, fetches posters from TMDB |
 | `Movie Recommender System Data Analysis.ipynb` | Legacy pipeline: TMDB CSV → CountVectorizer → cosine matrix → pickle |
-| `requirements.txt`, `setup.py`, `pyproject.toml`, `src/` | Legacy packaging; `src/` holds only empty `__init__.py` files |
+| `requirements.txt` | Legacy prototype deps only (pip) |
 | `start.sh` | Legacy PaaS launcher for Streamlit |
 | `data/`, `artifacts/` | Gitignored inputs/outputs. `data/` holds the TMDB 5000 CSVs (the catalog source, ADR-023); `artifacts/` is empty, pickles must be regenerated |
 | `.claude/docs/` | Design and process docs (routing below) |
 
-Not built yet: domain modules and tables, auth, search indexing, CSV catalog import, `ml/`, production deploy. The target layout, with current/planned markers, is in [architecture.md](.claude/docs/architecture.md).
+Not built yet: domain modules and tables, auth, search indexing, CSV catalog import, `ml/` pipelines, production deploy. The target layout, with current/planned markers, is in [architecture.md](.claude/docs/architecture.md).
 
 ## Documentation routing
 
@@ -64,8 +66,8 @@ Read the listed doc before starting the task. Read several when a task spans are
 
 ## Existing code and change tracking
 
-- Legacy files (`app.py`, notebook, `start.sh`, `setup.py`, `requirements.txt`, `src/`) may be modified or deleted, but only in a dedicated branch and commit, as described in [git-workflow.md](.claude/docs/git-workflow.md).
-- Before deleting, check that nothing still needs the logic. Port it first (for example, the notebook pipeline → `ml/recsys/`), then name its new location in the commit body.
+- Legacy files (`app.py`, notebook, `start.sh`, `requirements.txt`) may be modified or deleted, but only in a dedicated branch and commit, as described in [git-workflow.md](.claude/docs/git-workflow.md).
+- Before deleting, check that nothing still needs the logic. Port it first (for example, the notebook pipeline → `ml/src/movie_ml/`), then name its new location in the commit body.
 - Use `git mv` for moves. Never delete `data/` or `artifacts/` contents you did not create.
 - For broad restructuring (many files moved or deleted at once), list the file operations and get confirmation first.
 
@@ -96,8 +98,10 @@ Details: [testing.md](.claude/docs/testing.md), [deployment.md](.claude/docs/dep
 
 ```bash
 cp infra/.env.example infra/.env && docker compose -f infra/docker-compose.yml up -d --build
+uv sync --all-packages                                                # once, from the repo root: one .venv for api + ml
 cd apps/api && uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest
 cd apps/api && uv run python -m scripts.export_openapi openapi.json   # after API changes
+cd ml && uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest
 cd apps/web && pnpm gen:api && pnpm lint && pnpm typecheck && pnpm test && pnpm build
 ```
 
