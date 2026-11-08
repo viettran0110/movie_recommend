@@ -4,11 +4,11 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy.engine import Connection
 
+import app.modules.titles.models  # noqa: F401  (registers tables on Base.metadata)
 from app.core.config import get_settings
 from app.core.db import Base, create_engine
 
-# Import every module's models here so autogenerate sees their tables.
-# (No ORM models exist yet.)
+# Import every module's models above so autogenerate sees their tables.
 
 config = context.config
 if config.config_file_name is not None and config.attributes.get("configure_logger", True):
