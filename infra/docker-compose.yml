@@ -76,7 +76,12 @@ services:
   worker:
     build: *api-build
     command: ["taskiq", "worker", "app.workers.broker:broker", "app.workers.tasks"]
-    environment: *api-env
+    environment:
+      <<: *api-env
+      CATALOG_DATA_DIR: /data
+    # CSV catalog source (ADR-023). Import on demand:
+    #   docker compose -f infra/docker-compose.yml run --rm worker python -m scripts.import_catalog
+    volumes: ["../data:/data:ro"]
     depends_on:
       migrate: { condition: service_completed_successfully }
       redis: { condition: service_healthy }

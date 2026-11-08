@@ -16,7 +16,8 @@ Status:
   - Authorization: user A cannot modify user B's data.
   - Auth: refresh rotation, reuse detection, logout revocation, CSRF rejection.
 - Mock external services at the `app/integrations/` boundary. Tests never call TMDB or any other third-party API. The TMDB client is tested with `httpx.MockTransport` and fake keys (`tests/test_tmdb_client.py`).
-- Catalog import tests use small fixture CSVs under `tests/fixtures/` with the same columns as the TMDB 5000 files (including malformed rows). They never read the real `data/` files, which are not in the repository or in CI.
+- Catalog import tests use small fixture CSVs in `tests/fixtures/tmdb5000/` with the same columns as the TMDB 5000 files, including malformed rows, a duplicate id, blank and zero values, and a title without credits. Unit tests (`tests/test_catalog_source.py`) cover parsing; integration tests (`tests/integration/test_catalog_import.py`) cover idempotency, in-place updates, no deletes, and preserved non-source columns. They never read the real `data/` files, which are not in the repository or in CI.
+- Integration fixtures live in `tests/integration/conftest.py`: `postgres` (one container per module) and `migrated_db_url` (upgraded to head). `test_migrations.py` also asserts that the migrated schema matches the ORM models (Alembic `compare_metadata`), so a model change without a matching migration fails CI.
 
 ```bash
 cd apps/api

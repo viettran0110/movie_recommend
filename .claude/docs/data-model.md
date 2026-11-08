@@ -1,6 +1,8 @@
 # Data Model
 
-Status: **Planned draft.** No database exists yet. Treat column lists as the starting point for the first Alembic migrations. Refine them in the same change that implements them, and update this file to match.
+Status:
+- **Current**: the catalog tables below (Alembic revision `0002`, models in `apps/api/app/modules/titles/models.py`), filled by the CSV importer.
+- **Planned draft**: everything else (users, tracking, user content, recommender output). Treat those column lists as the starting point for their migrations. Refine them in the same change that implements them, and update this file to match.
 
 ## Conventions
 
@@ -20,22 +22,27 @@ Only movies are in scope at launch, but the schema must not be movies-only:
 - External IDs are unique per (`media_type`, `tmdb_id`), because TMDB movie and TV IDs overlap.
 - Code must branch on `media_type` through a registry or mapping. Do not assume `movie` in queries, Meilisearch documents, or API schemas.
 
-## Catalog
+## Catalog (current)
 
-| Table | Key columns |
+| Table | Columns |
 |---|---|
-| `titles` | id, media_type, tmdb_id, imdb_id, title, original_title, slug, overview, tagline, original_language, poster_path, backdrop_path, release_date (first air date for TV), status, tmdb_popularity, tmdb_vote_avg, tmdb_vote_count, score_avg, score_count, members_count, imported_at, updated_at; unique (media_type, tmdb_id) |
-| `movie_details` | title_id (PK/FK), runtime, budget, revenue, collection_tmdb_id |
-| `genres` / `title_genres` | id, tmdb_id, name, slug, media_types (array) / (title_id, genre_id) |
-| `keywords` / `title_keywords` | id, tmdb_id, name / (title_id, keyword_id) |
-| `people` | id, tmdb_id, name, profile_path |
-| `title_credits` | title_id, person_id, role (`cast`/`crew`), job (e.g. Director), character, order |
+| `titles` | id (bigint identity), media_type, tmdb_id (int), imdb_id varchar(16), title, original_title, slug, overview, tagline, original_language varchar(8), poster_path, backdrop_path, release_date (first air date for TV), status, tmdb_popularity (double), tmdb_vote_avg numeric(3,1) 0–10, tmdb_vote_count (default 0), score_avg numeric(4,2) 1–10, score_count (default 0), members_count (default 0), imported_at, created_at, updated_at; unique (media_type, tmdb_id) |
+| `movie_details` | title_id (PK/FK), runtime smallint, budget bigint, revenue bigint, collection_tmdb_id, updated_at |
+| `genres` / `title_genres` | id, tmdb_id (unique), name, slug (unique), media_types `media_type[]`, created_at, updated_at / PK (title_id, genre_id) |
+| `keywords` / `title_keywords` | id, tmdb_id (unique), name, created_at, updated_at / PK (title_id, keyword_id) |
+| `people` | id, tmdb_id (unique), name, profile_path, created_at, updated_at |
+| `title_credits` | id, tmdb_credit_id varchar(32) (unique), title_id, person_id, role, job (crew only, e.g. Director), character (cast only), sort_order smallint (cast billing order), created_at, updated_at |
+
+Enums: `media_type` (`movie`), `title_status` (`rumored`, `planned`, `in_production`, `post_production`, `released`, `canceled`; TV statuses are added with TV), `credit_role` (`cast`, `crew`).
 
 - `score_avg`, `score_count` and `members_count` are denormalized from `user_title_entries`. A worker job recomputes them; never compute them per request.
 - `members_count` means the number of users with the title in their list, in any status.
-- The catalog comes from the TMDB 5000 CSVs in `data/`, through an on-demand import task (ADR-023, [architecture.md](architecture.md)). The CSV `id` is a TMDB movie id and fills `tmdb_id`.
-- Columns the CSVs do not provide are nullable: `imdb_id`, `poster_path`, `backdrop_path`, `collection_tmdb_id`, `people.profile_path`. `poster_path` is filled by the optional poster job when `TMDB_API_KEY` is set (ADR-025); the others stay null. `release_date` is nullable (one CSV row has none). Budget and revenue of `0` in the CSV mean unknown and are stored as null.
-- `imported_at` records the last import that touched the row.
+- `slug` is not unique: URLs are `/movie/{id}-{slug}` and the id is authoritative. Slugs are ASCII; a title with no Latin characters gets `untitled`.
+- The catalog comes from the TMDB 5000 CSVs in `data/`, through an on-demand import task (ADR-023, [architecture.md](architecture.md)). The CSV `id` is a TMDB movie id and fills `tmdb_id`; TMDB's `credit_id` fills `tmdb_credit_id` and is the credit upsert key.
+- Credits: all cast is imported; crew only for Director, Writer, Screenplay, Producer, Original Music Composer and Director of Photography (about 136k credit rows and 65k people for the 4,803 movies). Changing the list is a code change in `tmdb5000_csv.py` followed by a re-import.
+- Columns the CSVs do not provide are nullable: `imdb_id`, `poster_path`, `backdrop_path`, `collection_tmdb_id`, `people.profile_path`. The importer never writes them, so a re-import keeps what other jobs stored. `poster_path` is filled by the optional poster job when `TMDB_API_KEY` is set (ADR-025); the others stay null. `release_date` is nullable (one CSV row has none). Budget, revenue and runtime of `0` in the CSV mean unknown and are stored as null.
+- `imported_at` records the last import that inserted or changed the title row. A re-import of unchanged data leaves it, and `updated_at`, untouched.
+- Foreign keys from catalog tables use the default `NO ACTION`: catalog rows are never deleted by the importer.
 
 ## Users and auth
 
@@ -89,8 +96,8 @@ These tables are written only by worker jobs; see [recommendation.md](recommenda
 
 ## Indexes
 
-- `pg_trgm` GIN index on `titles.title` and `titles.original_title`. This is a fallback only; the primary search is Meilisearch.
-- `titles (media_type, release_date)`, plus filtered sort indexes as needed for explore pages.
+- Current: `pg_trgm` GIN index on `titles.title` and `titles.original_title` (a fallback only; the primary search is Meilisearch), `titles (media_type, release_date)`, `title_genres (genre_id)`, `title_keywords (keyword_id)`, `title_credits (person_id)` and `title_credits (title_id, role, sort_order)`.
+- Planned: filtered sort indexes as needed for explore pages.
 - HNSW index on `title_embeddings.embedding` (cosine ops).
 - `user_title_entries (user_id, status, updated_at DESC)` for profile lists.
 - `user_title_entries (title_id)` for stats.

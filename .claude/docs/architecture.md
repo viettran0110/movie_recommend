@@ -2,7 +2,8 @@
 
 Status:
 - **Phase 0 skeleton is current**: `apps/api` (core, health module, Alembic, Taskiq worker), `apps/web` (Next.js, typed API client), `infra/docker-compose.yml`, CI, and the root uv workspace with an empty `ml/` package (ADR-026).
-- **Planned**: every domain module, the `ml/` pipelines, production infrastructure.
+- **Current since Phase 1 started**: the catalog tables (`app/modules/titles/models.py`) and the CSV catalog import (`app/modules/catalog`).
+- **Planned**: every other domain module, the `ml/` pipelines, production infrastructure.
 - Markers in the layout below show which is which. What exists today is listed in [current-state.md](current-state.md). Rationale for each choice: [decisions.md](decisions.md).
 
 ## Style
@@ -50,10 +51,10 @@ SSR/ISR, UI         modules: auth, users, titles, search,
   2. Online: the API reads those tables, filters, re-ranks, and caches the result.
   3. The API never trains models or loads large artifacts into memory.
   4. Details: [recommendation.md](recommendation.md).
-- **Ingestion** (planned, ADR-023):
+- **Ingestion** (current, ADR-023; steps 3 and 7 planned):
   1. Source: the TMDB 5000 CSVs in the repository-root `data/` directory (gitignored, never committed). `tmdb_5000_movies.csv` and `tmdb_5000_credits.csv` are joined on `id` = `movie_id`. Nested columns (genres, keywords, cast, crew, companies, countries, languages) hold JSON arrays and are parsed with `json.loads`, not `ast.literal_eval`.
-  2. An on-demand Taskiq task `import_catalog` (also runnable as `python -m scripts.import_catalog`) reads rows through a `CatalogSource`, validates each one with a Pydantic schema, and upserts titles (with `movie_details`), genres, keywords, people, and credits keyed on (`media_type`, `tmdb_id`). It is idempotent: re-running it updates rows in place and never deletes. Invalid rows are counted and logged by id, not fatal.
-  3. It then enqueues reindex jobs for the titles it changed.
+  2. An on-demand Taskiq task `catalog.import` (also runnable as `python -m scripts.import_catalog`) reads rows through a `CatalogSource`, validates each one into source-agnostic Pydantic records (`app/modules/catalog/schemas.py`), and upserts titles (with `movie_details`), genres, keywords, people, and credits keyed on (`media_type`, `tmdb_id`) and TMDB `credit_id`. It is idempotent: a conflicting row is updated only when a source column differs, so re-running unchanged data writes nothing; it never deletes, and never overwrites columns the source lacks (`poster_path`, `imdb_id`, ...). Invalid title rows are counted and logged by id, not fatal; an invalid nested item (one keyword, genre or credit) is dropped and logged, and its title is kept. Titles commit in batches of 500. The task returns an `ImportReport` (inserted, updated, unchanged, invalid, changed title ids). Type-specific detail rows go through a per-`media_type` registry (`DETAIL_SPECS` in `service.py`).
+  3. (Planned, with Meilisearch) It then enqueues reindex jobs for `changed_title_ids`.
   4. There is no scheduled sync. The catalog changes only when the CSVs change and the import is re-run.
   5. `CatalogSource` is the extension point: `Tmdb5000CsvSource` is the only implementation. A TMDB API source, or a source for another `media_type` (ADR-019), plugs in behind the same interface.
   6. The directory comes from the `CATALOG_DATA_DIR` setting. In compose, `data/` is mounted read-only into the worker.
@@ -74,12 +75,13 @@ apps/
     app/main.py           [current] app factory + lifespan
     app/core/             [current] config, db, logging; [planned] security, cache
     app/modules/<domain>/ router.py, schemas.py, service.py, repository.py, models.py; [current] health/
-    app/modules/catalog/  importer service; sources/ (CatalogSource protocol, tmdb5000_csv.py)
+    app/modules/titles/   [current] models.py (catalog ORM tables); [planned] read API (router, service, repository, schemas)
+    app/modules/catalog/  [current] importer: schemas.py (records), service.py, repository.py (bulk upserts), sources/ (CatalogSource protocol, tmdb5000_csv.py)
     app/integrations/     [current] tmdb_client.py (optional poster paths, ADR-025); [planned] meili_client.py
-    app/workers/          [current] Taskiq broker.py, scheduler.py, tasks.py
+    app/workers/          [current] Taskiq broker.py, scheduler.py, tasks.py (system.heartbeat, catalog.import)
     alembic/              [current] async env, revisions in versions/
-    scripts/              [current] export_openapi.py → openapi.json (committed API contract)
-    tests/                [current] unit; integration/ (testcontainers)
+    scripts/              [current] export_openapi.py → openapi.json (committed API contract), import_catalog.py
+    tests/                [current] unit; fixtures/ (small TMDB 5000-shaped CSVs); integration/ (testcontainers)
 ml/                       [current] package `movie-ml` (uv workspace member): pure offline code, imported by workers
   src/movie_ml/           [current] package root; [planned] content.py (TF-IDF similar, ADR-027), evaluation/
   tests/                  [current] boundary test (no app/DB/HTTP imports)
@@ -94,7 +96,7 @@ infra/                    [current] docker-compose.yml (dev); [planned] prod com
 - `service.py`: business rules, authorization checks, transactions, and cache invalidation. It may call other modules' services, but never their repositories.
 - `repository.py`: SQLAlchemy 2.0 async queries. Returns ORM objects or plain data.
 - `schemas.py`: request/response models. Never return ORM objects directly.
-- `models.py`: ORM tables. Every change requires an Alembic migration ([data-model.md](data-model.md)).
+- `models.py`: ORM tables. Every change requires an Alembic migration ([data-model.md](data-model.md)). Catalog tables are declared once in `titles/models.py`; the `catalog` module writes them through its own bulk-upsert repository, and `titles` reads them. New model modules must be imported in `alembic/env.py`.
 - Offline ML code lives in `ml/` (`movie_ml`). It never imports `app`, so a worker task does the I/O: it loads rows through a repository, calls `movie_ml`, and writes the results through a repository (ADR-026).
 - Config comes only from `app/core/config.py` (pydantic-settings). No `os.environ` lookups scattered through modules.
 - External HTTP calls go through `app/integrations/`, with timeouts, retries, and backoff. That covers TMDB, used only for optional poster paths (ADR-025), and Meilisearch. The catalog is read from local files (ADR-023).

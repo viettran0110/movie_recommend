@@ -1,46 +1,77 @@
 """Migration round-trip against a real PostgreSQL + pgvector (requires Docker)."""
 
 import asyncio
-from collections.abc import Iterator
-from pathlib import Path
+from typing import Any
 
 import pytest
 from alembic import command
-from alembic.config import Config
-from sqlalchemy import text
+from alembic.autogenerate import compare_metadata
+from alembic.runtime.migration import MigrationContext
+from sqlalchemy import Connection, text
 from testcontainers.community.postgres import PostgresContainer
 
-from app.core.db import create_engine
+import app.modules.titles.models  # noqa: F401  (registers tables on Base.metadata)
+from app.core.db import Base, create_engine
+from tests.integration.db import alembic_config
 
 pytestmark = pytest.mark.integration
 
-API_ROOT = Path(__file__).resolve().parents[2]
-PG_IMAGE = "pgvector/pgvector:0.8.7-pg17"  # keep in sync with infra/docker-compose.yml
+EXTENSIONS = {"vector", "pg_trgm", "citext"}
+CATALOG_TABLES = {
+    "titles",
+    "movie_details",
+    "genres",
+    "title_genres",
+    "keywords",
+    "title_keywords",
+    "people",
+    "title_credits",
+}
+ENUMS = {"media_type", "title_status", "credit_role"}
 
 
-@pytest.fixture(scope="module")
-def postgres() -> Iterator[PostgresContainer]:
-    with PostgresContainer(PG_IMAGE, driver="asyncpg") as container:
-        yield container
-
-
-def alembic_config(url: str) -> Config:
-    config = Config(str(API_ROOT / "alembic.ini"))
-    config.set_main_option("sqlalchemy.url", url)
-    config.attributes["configure_logger"] = False
-    return config
-
-
-def installed_extensions(url: str) -> set[str]:
-    async def query() -> set[str]:
+def query_set(url: str, sql: str) -> set[str]:
+    async def run() -> set[str]:
         engine = create_engine(url)
         async with engine.connect() as conn:
-            rows = await conn.execute(text("SELECT extname FROM pg_extension"))
-            names = {row[0] for row in rows}
+            names = {row[0] for row in await conn.execute(text(sql))}
         await engine.dispose()
         return names
 
-    return asyncio.run(query())
+    return asyncio.run(run())
+
+
+def installed_extensions(url: str) -> set[str]:
+    return query_set(url, "SELECT extname FROM pg_extension")
+
+
+def public_tables(url: str) -> set[str]:
+    return query_set(url, "SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
+
+
+def enum_types(url: str) -> set[str]:
+    return query_set(url, "SELECT typname FROM pg_type WHERE typtype = 'e'")
+
+
+def schema_diff(url: str) -> list[Any]:
+    def compare(conn: Connection) -> list[Any]:
+        context = MigrationContext.configure(conn, opts={"compare_type": True})
+        return list(compare_metadata(context, Base.metadata))
+
+    async def run() -> list[Any]:
+        engine = create_engine(url)
+        async with engine.connect() as conn:
+            diff = await conn.run_sync(compare)
+        await engine.dispose()
+        return diff
+
+    return asyncio.run(run())
+
+
+def assert_at_head(url: str) -> None:
+    assert installed_extensions(url) >= EXTENSIONS
+    assert public_tables(url) >= CATALOG_TABLES
+    assert enum_types(url) >= ENUMS
 
 
 def test_upgrade_downgrade_upgrade(postgres: PostgresContainer) -> None:
@@ -48,10 +79,20 @@ def test_upgrade_downgrade_upgrade(postgres: PostgresContainer) -> None:
     config = alembic_config(url)
 
     command.upgrade(config, "head")
-    assert {"vector", "pg_trgm", "citext"} <= installed_extensions(url)
+    assert_at_head(url)
 
     command.downgrade(config, "base")
-    assert not {"vector", "pg_trgm", "citext"} & installed_extensions(url)
+    assert not installed_extensions(url) & EXTENSIONS
+    assert not public_tables(url) & CATALOG_TABLES
+    assert not enum_types(url) & ENUMS
 
     command.upgrade(config, "head")
-    assert {"vector", "pg_trgm", "citext"} <= installed_extensions(url)
+    assert_at_head(url)
+
+
+def test_migrations_match_models(postgres: PostgresContainer) -> None:
+    url = postgres.get_connection_url()
+    command.upgrade(alembic_config(url), "head")
+
+    # Hand-written migrations must produce exactly what the ORM models declare.
+    assert schema_diff(url) == []

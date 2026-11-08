@@ -1,0 +1,7 @@
+budget,genres,homepage,id,keywords,original_language,original_title,overview,popularity,production_companies,production_countries,release_date,revenue,runtime,spoken_languages,status,tagline,title,vote_average,vote_count
+1000000,"[{""id"": 28, ""name"": ""Action""}, {""id"": 18, ""name"": ""Drama""}]",http://example.invalid/alpha,100,"[{""id"": 1, ""name"": ""hero""}, {""id"": 2, ""name"": ""space""}]",en,Alpha Movie,A hero goes to space.,12.5,"[{""name"": ""Studio"", ""id"": 9}]",[],2001-02-03,5000000,120,[],Released,Go.,Alpha Movie,7.2,150
+0,"[{""id"": 18, ""name"": ""Drama""}]",,200,"[{""id"": 2, ""name"": ""space""}, {""id"": 3, ""name"": ""\u00a0""}]",en,,,3.25,[],[],,0,0.0,[],Post Production,,Beta: The Sequel,6.0,10
+0,[{not json,,300,[],en,,,0,[],[],,0,,[],Released,,Broken Genres,0,0
+0,[],,100,[],en,,,0,[],[],,0,,[],Released,,Alpha Movie Duplicate,0,0
+0,[],,abc,[],en,,,0,[],[],,0,,[],Released,,Bad Id,0,0
+0,"[{""id"": 35, ""name"": ""Comedy""}]",,400,[],fr,Crème Brûlée,,1.0,[],[],1999-12-31,0,95,[],Released,,Crème Brûlée,8.0,3

@@ -11,12 +11,12 @@ This is a movie discovery, tracking, and recommendation website: search, explore
 
 Never describe planned components as implemented. Check the filesystem first.
 
-## Repository map (verified 2026-10-22)
+## Repository map (verified 2026-11-08)
 
 | Path | What it is |
 |---|---|
 | `pyproject.toml`, `uv.lock` | uv workspace root (members `apps/api`, `ml`; ADR-026). One `.venv` at the root |
-| `apps/api/` | FastAPI + Taskiq worker (uv, Python 3.12): `app/core`, `app/modules/health`, `app/integrations` (optional TMDB client), `app/workers`, `alembic/`, `tests/`, `openapi.json` |
+| `apps/api/` | FastAPI + Taskiq worker (uv, Python 3.12): `app/core`, `app/modules/health`, `app/modules/titles` (catalog ORM models), `app/modules/catalog` (CSV importer), `app/integrations` (optional TMDB client), `app/workers`, `alembic/`, `scripts/`, `tests/`, `openapi.json` |
 | `apps/web/` | Next.js 16 (pnpm, Node 24): placeholder home page, `src/features/titles` Poster, `src/lib/api` generated client, Vitest. Read `apps/web/AGENTS.md` before writing Next.js code |
 | `ml/` | Package `movie-ml`: pure offline recommender code imported by worker tasks; never imports `app` or the DB. Empty so far |
 | `infra/docker-compose.yml` | Local stack: db, redis, meili, migrate, api, worker, scheduler, web |
@@ -28,7 +28,7 @@ Never describe planned components as implemented. Check the filesystem first.
 | `data/`, `artifacts/` | Gitignored inputs/outputs. `data/` holds the TMDB 5000 CSVs (the catalog source, ADR-023); `artifacts/` is empty, pickles must be regenerated |
 | `.claude/docs/` | Design and process docs (routing below) |
 
-Not built yet: domain modules and tables, auth, search indexing, CSV catalog import, `ml/` pipelines, production deploy. The target layout, with current/planned markers, is in [architecture.md](.claude/docs/architecture.md).
+Built so far beyond Phase 0: catalog tables (Alembic `0002`) and the CSV catalog import. Not built yet: catalog read API, auth and user tables, search indexing, `ml/` pipelines, production deploy. The target layout, with current/planned markers, is in [architecture.md](.claude/docs/architecture.md).
 
 ## Documentation routing
 
@@ -101,6 +101,7 @@ cp infra/.env.example infra/.env && docker compose -f infra/docker-compose.yml u
 uv sync --all-packages                                                # once, from the repo root: one .venv for api + ml
 cd apps/api && uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest
 cd apps/api && uv run python -m scripts.export_openapi openapi.json   # after API changes
+cd apps/api && uv run alembic upgrade head && uv run python -m scripts.import_catalog   # load data/ CSVs (idempotent)
 cd ml && uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest
 cd apps/web && pnpm gen:api && pnpm lint && pnpm typecheck && pnpm test && pnpm build
 ```
