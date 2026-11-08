@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pathlib import Path
 from typing import Annotated, Literal
 
 from pydantic import Field, SecretStr, field_validator
@@ -22,6 +23,10 @@ class Settings(BaseSettings):
     # Accepts the v3 API key or the v4 API Read Access Token from the TMDB account settings.
     tmdb_api_key: SecretStr | None = None
     tmdb_api_url: str = "https://api.themoviedb.org/3"
+
+    # Directory with tmdb_5000_movies.csv / tmdb_5000_credits.csv (ADR-023). The default is
+    # the repo-root data/ seen from apps/api; compose mounts it read-only at /data.
+    catalog_data_dir: Path = Path("../../data")
 
     cors_origins: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: ["http://localhost:3000"]

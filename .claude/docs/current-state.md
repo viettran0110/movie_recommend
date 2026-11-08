@@ -1,12 +1,13 @@
 # Current State and Gap Analysis
 
-Status: **Current** — describes what exists in the repository as of 2026-10-22. Update this file whenever a gap is closed.
+Status: **Current** — describes what exists in the repository as of 2026-11-08. Update this file whenever a gap is closed.
 
 ## Inventory: new stack (Phase 0, current)
 
 | Path | Role | Notes |
 |---|---|---|
-| [apps/api/](../../apps/api/) | FastAPI service + Taskiq worker | Python 3.12, uv. Only endpoint: `GET /api/v1/health` (DB, Redis, Meilisearch). Alembic revision `0001` enables vector, pg_trgm, citext. No domain tables yet. `app/integrations/tmdb_client.py`: optional TMDB poster-path client with the `tmdb_api_key` setting (ADR-025); no job calls it yet |
+| [apps/api/](../../apps/api/) | FastAPI service + Taskiq worker | Python 3.12, uv. Only endpoint: `GET /api/v1/health` (DB, Redis, Meilisearch). Alembic `0001` enables vector, pg_trgm, citext; `0002` creates the catalog tables ([data-model.md](data-model.md)). `app/integrations/tmdb_client.py`: optional TMDB poster-path client with the `tmdb_api_key` setting (ADR-025); no job calls it yet |
+| [apps/api/app/modules/catalog/](../../apps/api/app/modules/catalog/) | CSV catalog import (ADR-023) | `CatalogSource` protocol, `Tmdb5000CsvSource`, idempotent bulk upserts; Taskiq task `catalog.import` and `python -m scripts.import_catalog`; setting `CATALOG_DATA_DIR`. Verified 2026-11-08 on the real CSVs: 4,803 titles, 135,817 credits, 64,771 people, 9,812 keywords, 20 genres; a re-run reports 4,803 unchanged. Two keywords with blank names are skipped |
 | [apps/api/openapi.json](../../apps/api/openapi.json) | API contract | Exported by `scripts/export_openapi.py`; source for the web client types |
 | [apps/web/](../../apps/web/) | Next.js 16 frontend | Placeholder home page showing API status; typed openapi-fetch client; Vitest. `features/titles` `Poster` (TMDB image or placeholder, ADR-025), not used on a page yet |
 | [infra/docker-compose.yml](../../infra/docker-compose.yml) | Local stack | db, redis (Valkey), meili, migrate, api, worker, scheduler, web |
@@ -27,7 +28,7 @@ Status: **Current** — describes what exists in the repository as of 2026-10-22
 | `artifacts/` | Model output (gitignored) | Expects `movie_list.pkl`, `similarity.pkl` — **not present locally** |
 | [README.md](../../README.md) | Run instructions | venv + `streamlit run app.py` |
 
-Not present yet: domain tables, auth, search indexing, CSV catalog import, recommender pipelines in `ml/`, production deploy, monitoring, backups.
+Not present yet: catalog read API, auth and user tables, search indexing, recommender pipelines in `ml/`, poster job, production deploy, monitoring, backups.
 
 ## How the prototype works
 
@@ -65,7 +66,7 @@ The app fails at startup if `artifacts/*.pkl` is missing.
 |---|---|---|
 | UI | Streamlit page; Next.js placeholder | Next.js SSR site |
 | API | health endpoint only | FastAPI `/api/v1` ([api-contracts.md](api-contracts.md)) |
-| Storage | pickle files; Postgres with extensions only | PostgreSQL + pgvector ([data-model.md](data-model.md)) |
+| Storage | pickle files (legacy); Postgres catalog tables filled from the CSVs | PostgreSQL + pgvector ([data-model.md](data-model.md)) |
 | Search | selectbox over titles | Meilisearch |
 | Users / lists / ratings | none | auth + `user_title_entries` ([security.md](security.md)) |
 | Recommendation | content-based CountVectorizer | tiered hybrid ([recommendation.md](recommendation.md)) |
@@ -89,7 +90,7 @@ Legacy files may be modified or deleted (see [decisions.md](decisions.md) ADR-01
 | Phase | Scope |
 |---|---|
 | 0 (done) | Monorepo skeleton, docker-compose (Postgres+pgvector, Valkey, Meilisearch), Alembic, Taskiq worker, lint, CI — done 2026-10-16 |
-| 1 | CSV catalog import from `data/` (ADR-023), poster job that runs when `TMDB_API_KEY` is set (ADR-025), TMDB attribution, Meilisearch search (autocomplete, typo tolerance, facets), explore, detail page, Bayesian top, content-based "similar" |
+| 1 (in progress) | Done: catalog tables and CSV catalog import from `data/` (ADR-023), 2026-11-08. Remaining: poster job that runs when `TMDB_API_KEY` is set (ADR-025), TMDB attribution, Meilisearch search (autocomplete, typo tolerance, facets), explore, detail page, Bayesian top, content-based "similar" |
 | 2 | Auth, personal list (status/score), public profile list, reviews, favorites |
 | 3 | Events, time-decayed trending, `/me/recommendations` (content-based on the user's list), user-submitted recs; item-CF / ALS only after the own-data threshold ([recommendation.md](recommendation.md)) |
 | 4 | Production deploy, monitoring, backups, rate limiting, admin |
