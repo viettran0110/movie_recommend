@@ -1,6 +1,156 @@
 {
   "components": {
     "schemas": {
+      "CastCredit": {
+        "properties": {
+          "character": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Character"
+          },
+          "order": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order"
+          },
+          "person": {
+            "$ref": "#/components/schemas/PersonRef"
+          }
+        },
+        "required": [
+          "person",
+          "character",
+          "order"
+        ],
+        "title": "CastCredit",
+        "type": "object"
+      },
+      "CrewCredit": {
+        "properties": {
+          "job": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job"
+          },
+          "person": {
+            "$ref": "#/components/schemas/PersonRef"
+          }
+        },
+        "required": [
+          "person",
+          "job"
+        ],
+        "title": "CrewCredit",
+        "type": "object"
+      },
+      "ErrorBody": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Details",
+            "type": "object"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorBody",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "Genre": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "media_types": {
+            "items": {
+              "$ref": "#/components/schemas/MediaType"
+            },
+            "title": "Media Types",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "media_types"
+        ],
+        "title": "Genre",
+        "type": "object"
+      },
+      "GenreRef": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug"
+        ],
+        "title": "GenreRef",
+        "type": "object"
+      },
       "HealthResponse": {
         "properties": {
           "checks": {
@@ -25,6 +175,423 @@
         ],
         "title": "HealthResponse",
         "type": "object"
+      },
+      "MediaType": {
+        "enum": [
+          "movie"
+        ],
+        "title": "MediaType",
+        "type": "string"
+      },
+      "MovieFields": {
+        "properties": {
+          "budget": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget"
+          },
+          "revenue": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revenue"
+          },
+          "runtime": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runtime"
+          }
+        },
+        "required": [
+          "runtime",
+          "budget",
+          "revenue"
+        ],
+        "title": "MovieFields",
+        "type": "object"
+      },
+      "Page_TitleSummary_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TitleSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "total"
+        ],
+        "title": "Page[TitleSummary]",
+        "type": "object"
+      },
+      "PersonRef": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "profile_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Path"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "profile_path"
+        ],
+        "title": "PersonRef",
+        "type": "object"
+      },
+      "TitleCredits": {
+        "properties": {
+          "cast": {
+            "items": {
+              "$ref": "#/components/schemas/CastCredit"
+            },
+            "title": "Cast",
+            "type": "array"
+          },
+          "crew": {
+            "items": {
+              "$ref": "#/components/schemas/CrewCredit"
+            },
+            "title": "Crew",
+            "type": "array"
+          },
+          "title_id": {
+            "title": "Title Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "title_id",
+          "cast",
+          "crew"
+        ],
+        "title": "TitleCredits",
+        "type": "object"
+      },
+      "TitleDetail": {
+        "properties": {
+          "backdrop_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backdrop Path"
+          },
+          "genres": {
+            "items": {
+              "$ref": "#/components/schemas/GenreRef"
+            },
+            "title": "Genres",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "keywords": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Keywords",
+            "type": "array"
+          },
+          "media_type": {
+            "$ref": "#/components/schemas/MediaType"
+          },
+          "members_count": {
+            "title": "Members Count",
+            "type": "integer"
+          },
+          "movie": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MovieFields"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "original_language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Language"
+          },
+          "original_title": {
+            "title": "Original Title",
+            "type": "string"
+          },
+          "overview": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overview"
+          },
+          "poster_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Poster Path"
+          },
+          "release_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Release Date"
+          },
+          "score_avg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score Avg"
+          },
+          "score_count": {
+            "title": "Score Count",
+            "type": "integer"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TitleStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tagline": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tagline"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "tmdb_popularity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tmdb Popularity"
+          },
+          "tmdb_vote_avg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tmdb Vote Avg"
+          },
+          "tmdb_vote_count": {
+            "title": "Tmdb Vote Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "media_type",
+          "slug",
+          "title",
+          "release_date",
+          "poster_path",
+          "tmdb_vote_avg",
+          "tmdb_vote_count",
+          "original_title",
+          "overview",
+          "tagline",
+          "original_language",
+          "backdrop_path",
+          "status",
+          "tmdb_popularity",
+          "score_avg",
+          "score_count",
+          "members_count",
+          "genres",
+          "keywords",
+          "movie"
+        ],
+        "title": "TitleDetail",
+        "type": "object"
+      },
+      "TitleStatus": {
+        "enum": [
+          "rumored",
+          "planned",
+          "in_production",
+          "post_production",
+          "released",
+          "canceled"
+        ],
+        "title": "TitleStatus",
+        "type": "string"
+      },
+      "TitleSummary": {
+        "description": "A title in a list: enough for a card (poster or placeholder, name, year, rating).",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "media_type": {
+            "$ref": "#/components/schemas/MediaType"
+          },
+          "poster_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Poster Path"
+          },
+          "release_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Release Date"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "tmdb_vote_avg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tmdb Vote Avg"
+          },
+          "tmdb_vote_count": {
+            "title": "Tmdb Vote Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "media_type",
+          "slug",
+          "title",
+          "release_date",
+          "poster_path",
+          "tmdb_vote_avg",
+          "tmdb_vote_count"
+        ],
+        "title": "TitleSummary",
+        "type": "object"
       }
     }
   },
@@ -34,6 +601,156 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/genres": {
+      "get": {
+        "operationId": "list_genres_api_v1_genres_get",
+        "parameters": [
+          {
+            "description": "Defaults to all media types",
+            "in": "query",
+            "name": "media_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/MediaType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Defaults to all media types",
+              "title": "Media Type"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Genre"
+                  },
+                  "title": "Response List Genres Api V1 Genres Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "List Genres",
+        "tags": [
+          "titles"
+        ]
+      }
+    },
+    "/api/v1/genres/{slug}/titles": {
+      "get": {
+        "operationId": "list_genre_titles_api_v1_genres__slug__titles_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Defaults to all media types",
+            "in": "query",
+            "name": "media_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/MediaType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Defaults to all media types",
+              "title": "Media Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 10000,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_TitleSummary_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "List Genre Titles",
+        "tags": [
+          "titles"
+        ]
+      }
+    },
     "/api/v1/health": {
       "get": {
         "operationId": "health_api_v1_health_get",
@@ -62,6 +779,114 @@
         "summary": "Health",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/v1/titles/{title_id}": {
+      "get": {
+        "operationId": "get_title_api_v1_titles__title_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "title_id",
+            "required": true,
+            "schema": {
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "title": "Title Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TitleDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Get Title",
+        "tags": [
+          "titles"
+        ]
+      }
+    },
+    "/api/v1/titles/{title_id}/credits": {
+      "get": {
+        "operationId": "get_title_credits_api_v1_titles__title_id__credits_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "title_id",
+            "required": true,
+            "schema": {
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "title": "Title Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TitleCredits"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Get Title Credits",
+        "tags": [
+          "titles"
         ]
       }
     }

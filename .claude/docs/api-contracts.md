@@ -1,6 +1,6 @@
 # API Contracts
 
-Status: **Planned draft**, except `GET /api/v1/health`, which is **current**. FastAPI's generated OpenAPI schema becomes the source of truth once implemented. Keep this file as the human summary and update it in the same change.
+Status: **Planned draft**, except the endpoints marked **current** (health, title detail and credits, genres) and the error envelope. FastAPI's generated OpenAPI schema becomes the source of truth once implemented. Keep this file as the human summary and update it in the same change.
 
 ## Conventions
 
@@ -9,7 +9,7 @@ Status: **Planned draft**, except `GET /api/v1/health`, which is **current**. Fa
 - Docs: Swagger UI at `/api/v1/docs`, schema at `/api/v1/openapi.json`. The committed copy is `apps/api/openapi.json`.
 - **Media types**: catalog resources are `titles`. Each title response includes `media_type` (`movie` at launch). List endpoints accept `?media_type=`, which defaults to all enabled types. Type-specific fields sit in a nested object (`movie: {runtime, ...}`). See [data-model.md](data-model.md) (ADR-019).
 - Pagination: `?page=1&page_size=20` (max 100) returns `{"items": [...], "page", "page_size", "total"}`. Use cursor pagination (`?cursor=`) for event-style feeds.
-- Errors: `{"error": {"code": "string_slug", "message": "human readable", "details": {...}}}` with the matching HTTP status. Validation errors return 422, with `details` listing field errors.
+- Errors (current, `app/core/errors.py`): `{"error": {"code": "string_slug", "message": "human readable", "details": {...}}}` with the matching HTTP status, also for unknown routes (`not_found`) and wrong methods (`method_not_allowed`). Services raise `AppError` subclasses (`NotFoundError` → 404). Validation errors return 422 with code `validation_error` and `details.errors` = `[{loc, msg, type}]`; the submitted input is never echoed.
 - Auth: the access token comes from an httpOnly cookie ([security.md](security.md)). Mutating requests that use cookie auth must send the CSRF header.
 - Ownership: every `/me/*` route acts only on the authenticated user. Never accept a `user_id` from the client for writes.
 - Timestamps are ISO 8601 UTC. User-facing text is English only in v1 (ADR-020).
@@ -30,17 +30,25 @@ Auth column: **—** public, **U** authenticated user, **A** admin. **RL** means
 
 ## Catalog and explore
 
-| Method | Path | Auth |
-|---|---|---|
-| GET | `/titles/{id}` | — |
-| GET | `/titles/{id}/credits` | — |
-| GET | `/titles/{id}/similar` | — |
-| GET | `/titles/{id}/reviews` | — |
-| GET | `/titles/{id}/user-recs` | — |
-| GET | `/explore/top?media_type=&sort=score\|popularity\|members` | — |
-| GET | `/explore/trending?media_type=&window=day\|week` | — |
-| GET | `/explore/upcoming?media_type=` | — |
-| GET | `/genres?media_type=`, `/genres/{slug}/titles` | — |
+| Method | Path | Auth | Status |
+|---|---|---|---|
+| GET | `/titles/{id}` | — | current |
+| GET | `/titles/{id}/credits` | — | current |
+| GET | `/titles/{id}/similar` | — | |
+| GET | `/titles/{id}/reviews` | — | |
+| GET | `/titles/{id}/user-recs` | — | |
+| GET | `/explore/top?media_type=&sort=score\|popularity\|members` | — | |
+| GET | `/explore/trending?media_type=&window=day\|week` | — | |
+| GET | `/explore/upcoming?media_type=` | — | |
+| GET | `/genres?media_type=`, `/genres/{slug}/titles?media_type=&page=&page_size=` | — | current |
+
+Current shapes (the OpenAPI schema is authoritative):
+
+- `GET /titles/{id}` → `TitleDetail`: id, media_type, slug, title, original_title, overview, tagline, original_language, release_date, status, poster_path, backdrop_path, tmdb_vote_avg, tmdb_vote_count, tmdb_popularity, score_avg, score_count, members_count, `genres` [{id, name, slug}], `keywords` [names], and `movie` {runtime, budget, revenue} (null for other media types). Unknown values are null. `id` must be 1..2^63−1 (else 422); a missing title is 404 `not_found`.
+- `GET /titles/{id}/credits` → {title_id, `cast` [{person {id, name, profile_path}, character, order}] by billing order, `crew` [{person, job}] by job then name}. Crew holds only the imported jobs ([data-model.md](data-model.md)).
+- `GET /genres` → [{id, name, slug, media_types}] by name; `?media_type=` keeps genres used by that type.
+- `GET /genres/{slug}/titles` → `Page` of `TitleSummary` {id, media_type, slug, title, release_date, poster_path, tmdb_vote_avg, tmdb_vote_count}, most TMDB-popular first, ties by id. `page` 1..10000, `page_size` 1..100 (default 20). Unknown slug is 404.
+- The `title:{id}` Redis cache below is not implemented yet; these endpoints read Postgres directly.
 
 ## Search (core feature, Meilisearch — ADR-018)
 
