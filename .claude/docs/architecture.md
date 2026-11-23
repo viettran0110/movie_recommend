@@ -73,9 +73,9 @@ apps/
     src/lib/api/          [current] openapi-fetch client + schema.d.ts generated from ../api/openapi.json — do not hand-edit
   api/                    [current] FastAPI
     app/main.py           [current] app factory + lifespan
-    app/core/             [current] config, db, logging; [planned] security, cache
+    app/core/             [current] config, db, logging, errors (error envelope); [planned] security, cache
     app/modules/<domain>/ router.py, schemas.py, service.py, repository.py, models.py; [current] health/
-    app/modules/titles/   [current] models.py (catalog ORM tables); [planned] read API (router, service, repository, schemas)
+    app/modules/titles/   [current] models.py (catalog ORM tables), read API (router, service, repository, schemas); [planned] Redis cache for `title:{id}`
     app/modules/catalog/  [current] importer: schemas.py (records), service.py, repository.py (bulk upserts), sources/ (CatalogSource protocol, tmdb5000_csv.py)
     app/integrations/     [current] tmdb_client.py (optional poster paths, ADR-025); [planned] meili_client.py
     app/workers/          [current] Taskiq broker.py, scheduler.py, tasks.py (system.heartbeat, catalog.import)

@@ -16,7 +16,7 @@ Never describe planned components as implemented. Check the filesystem first.
 | Path | What it is |
 |---|---|
 | `pyproject.toml`, `uv.lock` | uv workspace root (members `apps/api`, `ml`; ADR-026). One `.venv` at the root |
-| `apps/api/` | FastAPI + Taskiq worker (uv, Python 3.12): `app/core`, `app/modules/health`, `app/modules/titles` (catalog ORM models), `app/modules/catalog` (CSV importer), `app/integrations` (optional TMDB client), `app/workers`, `alembic/`, `scripts/`, `tests/`, `openapi.json` |
+| `apps/api/` | FastAPI + Taskiq worker (uv, Python 3.12): `app/core`, `app/modules/health`, `app/modules/titles` (catalog ORM models + read API), `app/modules/catalog` (CSV importer), `app/integrations` (optional TMDB client), `app/workers`, `alembic/`, `scripts/`, `tests/`, `openapi.json` |
 | `apps/web/` | Next.js 16 (pnpm, Node 24): placeholder home page, `src/features/titles` Poster, `src/lib/api` generated client, Vitest. Read `apps/web/AGENTS.md` before writing Next.js code |
 | `ml/` | Package `movie-ml`: pure offline recommender code imported by worker tasks; never imports `app` or the DB. Empty so far |
 | `infra/docker-compose.yml` | Local stack: db, redis, meili, migrate, api, worker, scheduler, web |
@@ -28,7 +28,7 @@ Never describe planned components as implemented. Check the filesystem first.
 | `data/`, `artifacts/` | Gitignored inputs/outputs. `data/` holds the TMDB 5000 CSVs (the catalog source, ADR-023); `artifacts/` is empty, pickles must be regenerated |
 | `.claude/docs/` | Design and process docs (routing below) |
 
-Built so far beyond Phase 0: catalog tables (Alembic `0002`) and the CSV catalog import. Not built yet: catalog read API, auth and user tables, search indexing, `ml/` pipelines, production deploy. The target layout, with current/planned markers, is in [architecture.md](.claude/docs/architecture.md).
+Built so far beyond Phase 0: catalog tables (Alembic `0002`), the CSV catalog import, and the catalog read API (title detail, credits, genres). Not built yet: explore, similar, auth and user tables, search indexing, `ml/` pipelines, production deploy. The target layout, with current/planned markers, is in [architecture.md](.claude/docs/architecture.md).
 
 ## Documentation routing
 

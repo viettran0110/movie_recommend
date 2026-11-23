@@ -8,8 +8,10 @@ from redis.asyncio import Redis
 
 from app.core.config import Settings, get_settings
 from app.core.db import create_engine, create_session_factory
+from app.core.errors import register_error_handlers
 from app.core.logging import configure_logging
 from app.modules.health.router import router as health_router
+from app.modules.titles.router import router as titles_router
 
 API_PREFIX = "/api/v1"
 
@@ -42,6 +44,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         redoc_url=None,
     )
     app.state.settings = settings
+    register_error_handlers(app)
 
     app.add_middleware(
         CORSMiddleware,
@@ -52,6 +55,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     app.include_router(health_router, prefix=API_PREFIX)
+    app.include_router(titles_router, prefix=API_PREFIX)
     return app
 
 

@@ -4,6 +4,40 @@
  */
 
 export interface paths {
+    "/api/v1/genres": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Genres */
+        get: operations["list_genres_api_v1_genres_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/genres/{slug}/titles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Genre Titles */
+        get: operations["list_genre_titles_api_v1_genres__slug__titles_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -21,10 +55,96 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/titles/{title_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Title */
+        get: operations["get_title_api_v1_titles__title_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/titles/{title_id}/credits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Title Credits */
+        get: operations["get_title_credits_api_v1_titles__title_id__credits_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** CastCredit */
+        CastCredit: {
+            /** Character */
+            character: string | null;
+            /** Order */
+            order: number | null;
+            person: components["schemas"]["PersonRef"];
+        };
+        /** CrewCredit */
+        CrewCredit: {
+            /** Job */
+            job: string | null;
+            person: components["schemas"]["PersonRef"];
+        };
+        /** ErrorBody */
+        ErrorBody: {
+            /** Code */
+            code: string;
+            /**
+             * Details
+             * @default {}
+             */
+            details: {
+                [key: string]: unknown;
+            };
+            /** Message */
+            message: string;
+        };
+        /** ErrorResponse */
+        ErrorResponse: {
+            error: components["schemas"]["ErrorBody"];
+        };
+        /** Genre */
+        Genre: {
+            /** Id */
+            id: number;
+            /** Media Types */
+            media_types: components["schemas"]["MediaType"][];
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+        };
+        /** GenreRef */
+        GenreRef: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+        };
         /** HealthResponse */
         HealthResponse: {
             /** Checks */
@@ -37,6 +157,117 @@ export interface components {
              */
             status: "ok" | "degraded";
         };
+        /**
+         * MediaType
+         * @enum {string}
+         */
+        MediaType: "movie";
+        /** MovieFields */
+        MovieFields: {
+            /** Budget */
+            budget: number | null;
+            /** Revenue */
+            revenue: number | null;
+            /** Runtime */
+            runtime: number | null;
+        };
+        /** Page[TitleSummary] */
+        Page_TitleSummary_: {
+            /** Items */
+            items: components["schemas"]["TitleSummary"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
+        /** PersonRef */
+        PersonRef: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Profile Path */
+            profile_path: string | null;
+        };
+        /** TitleCredits */
+        TitleCredits: {
+            /** Cast */
+            cast: components["schemas"]["CastCredit"][];
+            /** Crew */
+            crew: components["schemas"]["CrewCredit"][];
+            /** Title Id */
+            title_id: number;
+        };
+        /** TitleDetail */
+        TitleDetail: {
+            /** Backdrop Path */
+            backdrop_path: string | null;
+            /** Genres */
+            genres: components["schemas"]["GenreRef"][];
+            /** Id */
+            id: number;
+            /** Keywords */
+            keywords: string[];
+            media_type: components["schemas"]["MediaType"];
+            /** Members Count */
+            members_count: number;
+            movie: components["schemas"]["MovieFields"] | null;
+            /** Original Language */
+            original_language: string | null;
+            /** Original Title */
+            original_title: string;
+            /** Overview */
+            overview: string | null;
+            /** Poster Path */
+            poster_path: string | null;
+            /** Release Date */
+            release_date: string | null;
+            /** Score Avg */
+            score_avg: number | null;
+            /** Score Count */
+            score_count: number;
+            /** Slug */
+            slug: string;
+            status: components["schemas"]["TitleStatus"] | null;
+            /** Tagline */
+            tagline: string | null;
+            /** Title */
+            title: string;
+            /** Tmdb Popularity */
+            tmdb_popularity: number | null;
+            /** Tmdb Vote Avg */
+            tmdb_vote_avg: number | null;
+            /** Tmdb Vote Count */
+            tmdb_vote_count: number;
+        };
+        /**
+         * TitleStatus
+         * @enum {string}
+         */
+        TitleStatus: "rumored" | "planned" | "in_production" | "post_production" | "released" | "canceled";
+        /**
+         * TitleSummary
+         * @description A title in a list: enough for a card (poster or placeholder, name, year, rating).
+         */
+        TitleSummary: {
+            /** Id */
+            id: number;
+            media_type: components["schemas"]["MediaType"];
+            /** Poster Path */
+            poster_path: string | null;
+            /** Release Date */
+            release_date: string | null;
+            /** Slug */
+            slug: string;
+            /** Title */
+            title: string;
+            /** Tmdb Vote Avg */
+            tmdb_vote_avg: number | null;
+            /** Tmdb Vote Count */
+            tmdb_vote_count: number;
+        };
     };
     responses: never;
     parameters: never;
@@ -46,6 +277,83 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    list_genres_api_v1_genres_get: {
+        parameters: {
+            query?: {
+                /** @description Defaults to all media types */
+                media_type?: components["schemas"]["MediaType"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Genre"][];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_genre_titles_api_v1_genres__slug__titles_get: {
+        parameters: {
+            query?: {
+                /** @description Defaults to all media types */
+                media_type?: components["schemas"]["MediaType"] | null;
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_TitleSummary_"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     health_api_v1_health_get: {
         parameters: {
             query?: never;
@@ -71,6 +379,86 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+        };
+    };
+    get_title_api_v1_titles__title_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                title_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TitleDetail"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_title_credits_api_v1_titles__title_id__credits_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                title_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TitleCredits"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
